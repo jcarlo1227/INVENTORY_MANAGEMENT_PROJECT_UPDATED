@@ -1247,12 +1247,22 @@ const getOrderShipmentStats = async () => {
     const delivered = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'delivered'`;
     const shipped = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'shipped'`;
     const processing = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'processing'`;
-
+    const delayed = await sql`
+      SELECT COUNT(*) as count
+      FROM order_shipments
+      WHERE status = 'shipped'
+        AND (
+          (ship_date IS NOT NULL AND ship_date <= CURRENT_DATE - INTERVAL '1 day')
+          OR (ship_date IS NULL AND updated_at <= NOW() - INTERVAL '1 day')
+        )
+    `;
+ 
     return {
       totalOrders: parseInt(total[0].count),
       deliveredOrders: parseInt(delivered[0].count),
       shippedOrders: parseInt(shipped[0].count),
-      processingOrders: parseInt(processing[0].count)
+      processingOrders: parseInt(processing[0].count),
+      delayedShippedOrders: parseInt(delayed[0].count)
     };
   } catch (err) {
     console.error('Error fetching order shipment statistics:', err);

@@ -2404,7 +2404,7 @@
           totalShipments: stats.totalOrders || 0,
           pendingShipments: stats.processingOrders || 0,
           shippedToday: stats.shippedOrders || 0,
-          delayedShipments: 0
+          delayedShipments: stats.delayedShippedOrders || 0
         });
       }
     } catch (error) {
