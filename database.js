@@ -1,0 +1,828 @@
+const { neon } = require('@neondatabase/serverless');
+require('dotenv').config();
+
+// Material shipments removed
+
+let sql = null;
+let connectionPromise = null;
+
+// Initialize database connection
+async function initializeConnection() {
+  if (!connectionPromise) {
+    connectionPromise = (async () => {
+      if (process.env.DATABASE_URL) {
+        try {
+          console.log('🔌 Attempting to connect to database...');
+          console.log('📡 Database URL format check:', process.env.DATABASE_URL.includes('neon') ? 'Neon format detected' : 'Unknown format');
+          
+          const connection = neon(process.env.DATABASE_URL);
+          
+          // For Neon databases, add initial delay to allow startup
+          if (process.env.DATABASE_URL.includes('neon')) {
+            console.log('🌅 Neon database detected, allowing startup time...');
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds for Neon to be ready
+          }
+          
+          // Test connection with timeout and retry logic
+          let retries = 5;
+          let lastError = null;
+          let delay = 1000; // Start with 1 second delay
+          
+          while (retries > 0) {
+            try {
+              console.log(`🔄 Connection attempt ${6 - retries}/5...`);
+              
+              // Add timeout to the connection test
+              const connectionPromise = connection`SELECT 1`;
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Connection timeout')), 10000) // 10 second timeout
+              );
+              
+              await Promise.race([connectionPromise, timeoutPromise]);
+              
+              sql = connection;
+              module.exports.sql = async () => connection;
+              console.log('✅ Database connection initialized successfully');
+              return connection;
+            } catch (testError) {
+              lastError = testError;
+              retries--;
+              if (retries > 0) {
+                console.log(`⚠️ Connection test failed, retrying in ${delay/1000} seconds... (${retries} attempts left)`);
+                console.log(`💡 Error: ${testError.message}`);
+                
+                // For timeout errors, increase delay more aggressively
+                if (testError.message.includes('timeout') || testError.message.includes('ETIMEDOUT')) {
+                  delay = Math.min(delay * 2, 8000); // Double delay for timeouts, max 8 seconds
+                  console.log(`⏰ Timeout detected, increasing delay to ${delay/1000} seconds`);
+                } else {
+                  delay = Math.min(delay * 1.5, 5000); // Normal delay increase
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
+              }
+            }
+          }
+          
+          // All retries failed
+          console.error('❌ Connection test failed after all retries:', lastError.message);
+          throw lastError;
+          
+        } catch (error) {
+          console.error('⚠️ Database connection failed:');
+          console.error('Error type:', error.name);
+          console.error('Error message:', error.message);
+          if (error.code) console.error('Error code:', error.code);
+          if (error.stack) console.error('Stack trace:', error.stack);
+          
+          // Check if it's a network-related error
+          if (error.message.includes('fetch failed') || error.message.includes('network') || error.message.includes('timeout')) {
+            console.log('💡 This appears to be a network connectivity issue.');
+            console.log('💡 Please check your internet connection and try again.');
+            console.log('💡 If using Neon database, ensure the database is accessible from your network.');
+            console.log('💡 Check if your firewall or antivirus is blocking the connection.');
+            console.log('💡 Try accessing the database from a different network.');
+            
+            // Specific Neon database "fetch failed" troubleshooting
+            if (error.message.includes('fetch failed') && process.env.DATABASE_URL.includes('neon')) {
+              console.log('💡 Neon "fetch failed" specific solutions:');
+              console.log('💡 1. This often happens during cold starts - wait a few minutes and retry');
+              console.log('💡 2. Check if your Neon database is in "Idle" state in the dashboard');
+              console.log('💡 3. Try accessing the database from Neon dashboard to wake it up');
+              console.log('💡 4. Check if you have IP restrictions enabled that might block your connection');
+              console.log('💡 5. Verify your DATABASE_URL is correct and includes the right password');
+            }
+          }
+          
+          // Check for common Neon database issues
+          if (process.env.DATABASE_URL.includes('neon')) {
+            console.log('💡 Neon database troubleshooting:');
+            console.log('💡 1. Check if your Neon database is active in the dashboard');
+            console.log('💡 2. Verify the connection string is correct');
+            console.log('💡 3. Check if IP restrictions are enabled');
+            console.log('💡 4. Ensure the database password is correct');
+          }
+          
+          sql = null;
+        }
+      } else {
+        console.log('⚠️ No DATABASE_URL found, running in mock mode');
+        console.log('💡 To enable database functionality, set the DATABASE_URL environment variable');
+        console.log('💡 Example: DATABASE_URL=postgresql://user:password@host:port/database');
+        sql = null;
+      }
+      return sql;
+    })();
+  }
+  return connectionPromise;
+}
+
+// Get SQL connection
+async function getSql() {
+  try {
+    if (!sql) {
+      await initializeConnection();
+    }
+    
+    // Always test the connection before returning it
+    if (sql) {
+      try {
+        await sql`SELECT 1`;
+        return sql;
+      } catch (testError) {
+        console.log('⚠️ Existing connection failed test, reinitializing...');
+        // Reset the connection and try again
+        sql = null;
+        connectionPromise = null;
+        await initializeConnection();
+        return sql;
+      }
+    }
+    
+    return sql;
+  } catch (error) {
+    console.log('⚠️ Failed to get working database connection:', error.message);
+    return null;
+  }
+}
+
+// Check if database is available
+function isDatabaseAvailable() {
+  return sql !== null;
+}
+
+// Check if database is actually working (can execute queries)
+async function isDatabaseWorking() {
+  if (!sql) {
+    return false;
+  }
+  
+  try {
+    await sql`SELECT 1`;
+    return true;
+  } catch (error) {
+    console.log('⚠️ Database connection test failed:', error.message);
+    return false;
+  }
+}
+
+// Health check and connection maintenance
+async function maintainConnection() {
+  try {
+    if (!sql) {
+      return false;
+    }
+    
+    // Test the connection
+    await sql`SELECT 1`;
+    return true;
+  } catch (error) {
+    console.log('⚠️ Connection health check failed, reinitializing...');
+    
+    // Reset the connection and try to reinitialize
+    try {
+      sql = null;
+      connectionPromise = null;
+      await initializeConnection();
+      return sql !== null;
+    } catch (reinitError) {
+      console.log('❌ Failed to reinitialize connection:', reinitError.message);
+      return false;
+    }
+  }
+}
+
+// Get a working connection with retry
+async function getWorkingConnection(maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const connection = await getSql();
+      if (connection) {
+        // Test the connection
+        await connection`SELECT 1`;
+        return connection;
+      }
+    } catch (error) {
+      console.log(`⚠️ Connection attempt ${attempt}/${maxRetries} failed:`, error.message);
+      
+      if (attempt < maxRetries) {
+        console.log(`🔄 Retrying in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Reset connection for next attempt
+        sql = null;
+        connectionPromise = null;
+      }
+    }
+  }
+  
+  console.log('❌ Failed to get working connection after all retries');
+  return null;
+}
+
+// Retry wrapper for database operations
+async function retryOperation(operation, maxRetries = 3, delay = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      console.log(`⚠️ Operation attempt ${attempt}/${maxRetries} failed:`, error.message);
+      
+      if (attempt < maxRetries) {
+        console.log(`🔄 Retrying in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay = Math.min(delay * 1.5, 5000); // Increase delay up to 5 seconds
+      } else {
+        throw error; // Re-throw on final attempt
+      }
+    }
+  }
+}
+
+// Get database status
+function getDatabaseStatus() {
+  return {
+    available: isDatabaseAvailable(),
+    connectionPromise: connectionPromise !== null,
+    hasUrl: !!process.env.DATABASE_URL
+  };
+}
+
+// Test database connection and create tables
+const testConnection = async () => {
+  const connection = await getWorkingConnection();
+  if (!connection) {
+    console.log('⚠️ Database not available, skipping table creation');
+    return;
+  }
+  
+  try {
+    const result = await connection`SELECT version()`;
+    console.log('✅ Connected to Neon database successfully');
+    console.log(`Database version: ${result[0].version}`);
+    
+    // Create users table if it doesn't exist
+    await connection`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    
+    // Create notifications table if it doesn't exist
+    await connection`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(100) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(20) DEFAULT 'info',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_read BOOLEAN DEFAULT false
+      )
+    `;
+    
+    // Create scan history table if it doesn't exist
+    await connection`
+      CREATE TABLE IF NOT EXISTS scan_history (
+        id SERIAL PRIMARY KEY,
+        scanned_code VARCHAR(100) NOT NULL,
+        scan_type VARCHAR(20) DEFAULT 'barcode',
+        item_id INTEGER,
+        product_name VARCHAR(255),
+        quantity INTEGER DEFAULT 1,
+        scan_status VARCHAR(20) DEFAULT 'found',
+        scanned_by VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        notes TEXT
+      )
+    `;
+    
+    console.log('✅ Users, notifications, and scan history tables created/verified');
+  } catch (err) {
+    console.error('❌ Database connection error:', err);
+  }
+};
+
+// Initialize database
+const initializeDatabase = async () => {
+  try {
+    await testConnection();
+    
+    // Get the SQL connection
+    const connection = await getSql();
+    if (!connection) {
+      console.log('⚠️ Database not available, skipping database initialization');
+      return;
+    }
+    
+    // Check if admin user exists, if not create it
+    const adminCheck = await connection`SELECT * FROM users WHERE username = 'admin'`;
+    
+    if (adminCheck.length === 0) {
+      const bcrypt = require('bcryptjs');
+      const hashedPassword = await bcrypt.hash('admin', 10);
+      
+      await connection`
+        INSERT INTO users (username, password, role) 
+        VALUES ('admin', ${hashedPassword}, 'admin')
+      `;
+      
+      console.log('✅ Default admin user created (username: admin, password: admin)');
+    } else {
+      console.log('✅ Admin user already exists');
+    }
+    
+    // Initialize inventory tables with fresh connection
+    try {
+      const { initializeInventoryTable, initializeOrderShipmentsTable, getAllOrderShipments } = require('./inventory');
+      
+      // Get a fresh connection for table creation
+      const freshConnection = await getSql();
+      if (!freshConnection) {
+        console.log('⚠️ No database connection available for table creation');
+        return;
+      }
+      
+      // Test the connection before proceeding
+      try {
+        await freshConnection`SELECT 1`;
+        console.log('✅ Database connection verified for table creation');
+      } catch (testError) {
+        console.log('⚠️ Database connection test failed, skipping table creation:', testError.message);
+        return;
+      }
+      
+      await initializeInventoryTable();
+      await initializeOrderShipmentsTable();
+      
+      // Trigger initial sync from production_planning (processed) into order_shipments
+      try { 
+        await getAllOrderShipments({}); 
+        console.log('✅ Initial sync from production_planning completed');
+      } catch (e) { 
+        console.warn('⚠️ Initial sync from production_planning skipped:', e?.message); 
+      }
+    } catch (tableError) {
+      console.error('❌ Error creating inventory tables:', tableError);
+      // Don't throw here, just log the error and continue
+      console.log('⚠️ Continuing with server startup despite table creation errors');
+    }
+    
+  } catch (err) {
+    console.error('❌ Database initialization error:', err);
+  }
+};
+
+// User authentication functions
+const authenticateUser = async (username, password) => {
+  try {
+    // Try to get a working database connection
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, using mock authentication');
+      // Mock authentication for testing when database is not available
+      if (username === 'admin' && password === 'admin') {
+        return {
+          id: 1,
+          username: 'admin',
+          role: 'admin'
+        };
+      }
+      return null;
+    }
+    
+    const result = await sql`SELECT * FROM users WHERE username = ${username}`;
+    
+    if (result.length === 0) {
+      return null;
+    }
+    
+    const user = result[0];
+    const bcrypt = require('bcryptjs');
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    
+    if (isValidPassword) {
+      return {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      };
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('Authentication error:', err);
+    // Mock authentication for testing when database is not available
+    if (username === 'admin' && password === 'admin') {
+      return {
+        id: 1,
+        username: 'admin',
+        role: 'admin'
+      };
+    }
+    return null;
+  }
+};
+
+// In-memory notifications storage for testing when database is not available
+let inMemoryNotifications = [];
+let nextNotificationId = 1;
+
+// Notification functions
+const createNotification = async (title, message, type = 'info') => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, using in-memory notifications');
+      
+      // Check for duplicates in in-memory storage
+      const isDuplicate = inMemoryNotifications.some(n => 
+        n.title === title && 
+        n.message === message && 
+        n.type === type &&
+        (new Date() - new Date(n.created_at)) < 60000 // Within last minute
+      );
+      
+      if (isDuplicate) {
+        console.log('⚠️ Duplicate notification prevented:', title);
+        return null;
+      }
+      
+      const notification = {
+        id: nextNotificationId++,
+        title,
+        message,
+        type,
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+      inMemoryNotifications.unshift(notification);
+      // Keep only the latest 20 notifications
+      if (inMemoryNotifications.length > 20) {
+        inMemoryNotifications = inMemoryNotifications.slice(0, 20);
+      }
+      return notification;
+    }
+    
+    // Check for duplicates in database (within last minute)
+    const duplicateCheck = await sql`
+      SELECT id FROM notifications 
+      WHERE title = ${title} 
+        AND message = ${message} 
+        AND type = ${type}
+        AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 minute'
+      LIMIT 1
+    `;
+    
+    if (duplicateCheck.length > 0) {
+      console.log('⚠️ Duplicate notification prevented:', title);
+      return null;
+    }
+    
+    const result = await sql`
+      INSERT INTO notifications (title, message, type, created_at, is_read) 
+      VALUES (${title}, ${message}, ${type}, CURRENT_TIMESTAMP, false)
+      RETURNING id, title, message, type, created_at, is_read
+    `;
+    return result[0];
+  } catch (err) {
+    console.error('Create notification error:', err);
+    // Fallback to in-memory storage
+    const notification = {
+      id: nextNotificationId++,
+      title,
+      message,
+      type,
+      created_at: new Date().toISOString(),
+      is_read: false
+    };
+    inMemoryNotifications.unshift(notification);
+    // Keep only the latest 20 notifications
+    if (inMemoryNotifications.length > 20) {
+      inMemoryNotifications = inMemoryNotifications.slice(0, 20);
+    }
+    return notification;
+  }
+};
+
+const getNotifications = async (limit = 10) => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, using in-memory notifications');
+      return inMemoryNotifications.slice(0, limit);
+    }
+    
+    const result = await sql`
+      SELECT id, title, message, type, created_at, is_read 
+      FROM notifications 
+      ORDER BY created_at DESC 
+      LIMIT ${limit}
+    `;
+    return result;
+  } catch (err) {
+    console.error('Get notifications error:', err);
+    // Fallback to in-memory storage
+    return inMemoryNotifications.slice(0, limit);
+  }
+};
+
+const markNotificationAsRead = async (id) => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, using in-memory notifications');
+      const notification = inMemoryNotifications.find(n => n.id == id);
+      if (notification) {
+        notification.is_read = true;
+        return true;
+      }
+      return false;
+    }
+    
+    await sql`UPDATE notifications SET is_read = true WHERE id = ${id}`;
+    return true;
+  } catch (err) {
+    console.error('Mark notification as read error:', err);
+    // Fallback to in-memory storage
+    const notification = inMemoryNotifications.find(n => n.id == id);
+    if (notification) {
+      notification.is_read = true;
+      return true;
+    }
+    return false;
+  }
+};
+
+const markAllNotificationsAsRead = async () => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, using in-memory notifications');
+      inMemoryNotifications.forEach(notification => {
+        notification.is_read = true;
+      });
+      return true;
+    }
+    
+    await sql`UPDATE notifications SET is_read = true WHERE is_read = false`;
+    return true;
+  } catch (err) {
+    console.error('Mark all notifications as read error:', err);
+    // Fallback to in-memory storage
+    inMemoryNotifications.forEach(notification => {
+      notification.is_read = true;
+    });
+    return true;
+  }
+};
+
+const getUnreadNotificationCount = async () => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, using in-memory notifications');
+      return inMemoryNotifications.filter(n => !n.is_read).length;
+    }
+    
+    const result = await sql`SELECT COUNT(*) as count FROM notifications WHERE is_read = false`;
+    return result[0].count;
+  } catch (err) {
+    console.error('Get unread notification count error:', err);
+    // Fallback to in-memory storage
+    return inMemoryNotifications.filter(n => !n.is_read).length;
+  }
+};
+
+// Scan history functions
+const saveScanHistory = async (scanData) => {
+  const connection = await getSql();
+  if (!connection) {
+    console.log('⚠️ Database not available, scan history saved locally only');
+    return { id: Date.now(), created_at: new Date() };
+  }
+  
+  try {
+    // Validate required fields
+    if (!scanData.code) {
+      throw new Error('Scan code is required');
+    }
+
+    const result = await connection`
+      INSERT INTO scan_history (
+        scanned_code, scan_type, item_id, product_name, 
+        quantity, scan_status, scanned_by, notes
+      ) VALUES (
+        ${scanData.code}, 
+        ${scanData.type || 'barcode'}, 
+        ${scanData.itemId || null}, 
+        ${scanData.productName || null}, 
+        ${scanData.quantity || 1}, 
+        ${scanData.status || 'scanned'}, 
+        ${scanData.scannedBy || 'unknown'}, 
+        ${scanData.notes || null}
+      ) RETURNING id, created_at, scanned_code, scan_type, product_name, quantity, scan_status
+    `;
+    
+    console.log('Scan saved successfully:', result[0]);
+    return result[0];
+  } catch (err) {
+    console.error('Save scan history error:', err);
+    throw new Error(`Failed to save scan: ${err.message}`);
+  }
+};
+
+const getScanHistory = async (limit = 100) => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, returning empty scan history');
+      return [];
+    }
+    
+    const result = await sql`
+      SELECT * FROM scan_history 
+      ORDER BY created_at DESC 
+      LIMIT ${limit}
+    `;
+    return result;
+  } catch (err) {
+    console.error('Get scan history error:', err);
+    return [];
+  }
+};
+
+const clearScanHistory = async () => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, scan history cleared locally only');
+      return true;
+    }
+    
+    await sql`DELETE FROM scan_history`;
+    return true;
+  } catch (err) {
+    console.error('Clear scan history error:', err);
+    return false;
+  }
+};
+
+const deleteScanHistory = async (scanId) => {
+  try {
+    const sql = await getWorkingConnection();
+    if (!sql) {
+      console.log('⚠️ Database not available, scan history deleted locally only');
+      return true;
+    }
+
+    await sql`DELETE FROM scan_history WHERE id = ${scanId}`;
+    // PostgreSQL DELETE doesn't return affected rows by default
+    const check = await sql`SELECT EXISTS(SELECT 1 FROM scan_history WHERE id = ${scanId})`;
+    return !check[0].exists; // Returns true if the row no longer exists
+  } catch (err) {
+    console.error('Delete scan history error:', err);
+    throw err; // Propagate error to handle it in the API
+  }
+};
+
+
+// Test database connection manually (for debugging)
+async function testDatabaseConnection() {
+  console.log('🧪 Testing database connection...');
+  console.log('Environment variables:');
+  console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+  console.log('- NODE_ENV:', process.env.NODE_ENV || 'Not set');
+  
+  if (process.env.DATABASE_URL) {
+    console.log('- DATABASE_URL format:', process.env.DATABASE_URL.includes('neon') ? 'Neon' : 'Other');
+    console.log('- DATABASE_URL length:', process.env.DATABASE_URL.length);
+    console.log('- DATABASE_URL starts with:', process.env.DATABASE_URL.substring(0, 20) + '...');
+    
+    // Extract host from DATABASE_URL for network testing
+    try {
+      const url = new URL(process.env.DATABASE_URL);
+      console.log('- Database host:', url.hostname);
+      console.log('- Database port:', url.port || '5432 (default)');
+    } catch (urlError) {
+      console.log('- DATABASE_URL parsing failed:', urlError.message);
+    }
+  }
+  
+  try {
+    const connection = await getSql();
+    if (connection) {
+      console.log('✅ Database connection successful');
+      try {
+        const result = await connection`SELECT version()`;
+        console.log('Database version:', result[0].version);
+        return true;
+      } catch (queryError) {
+        console.log('⚠️ Connection object exists but query failed:', queryError.message);
+        return false;
+      }
+    } else {
+      console.log('❌ Database connection failed - no connection returned');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Database connection test failed:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    
+    // Additional error analysis
+    if (error.message.includes('ETIMEDOUT')) {
+      console.log('💡 ETIMEDOUT indicates a network connectivity issue:');
+      console.log('💡 1. Check if your internet connection is stable');
+      console.log('💡 2. Try pinging the database host');
+      console.log('💡 3. Check if your firewall is blocking outbound connections');
+      console.log('💡 4. Try using a different network (mobile hotspot)');
+    }
+    
+    return false;
+  }
+}
+
+// Test network connectivity to database host
+async function testNetworkConnectivity() {
+  if (!process.env.DATABASE_URL) {
+    console.log('⚠️ No DATABASE_URL to test network connectivity');
+    return false;
+  }
+  
+  try {
+    const url = new URL(process.env.DATABASE_URL);
+    const hostname = url.hostname;
+    const port = url.port || '5432';
+    
+    console.log(`🌐 Testing network connectivity to ${hostname}:${port}...`);
+    
+    // Simple TCP connection test using net module
+    const net = require('net');
+    
+    return new Promise((resolve) => {
+      const socket = new net.Socket();
+      let connected = false;
+      
+      socket.setTimeout(5000); // 5 second timeout
+      
+      socket.on('connect', () => {
+        connected = true;
+        socket.destroy();
+        console.log(`✅ Network connectivity to ${hostname}:${port} successful`);
+        resolve(true);
+      });
+      
+      socket.on('timeout', () => {
+        socket.destroy();
+        console.log(`⏰ Network connectivity to ${hostname}:${port} timed out`);
+        resolve(false);
+      });
+      
+      socket.on('error', (error) => {
+        console.log(`❌ Network connectivity to ${hostname}:${port} failed: ${error.message}`);
+        resolve(false);
+      });
+      
+      socket.connect(parseInt(port), hostname);
+    });
+  } catch (error) {
+    console.log('❌ Network connectivity test failed:', error.message);
+    return false;
+  }
+}
+
+module.exports = {
+  sql: async () => {
+    if (!sql) {
+      await initializeConnection();
+    }
+    return sql;
+  },
+  testConnection,
+  initializeDatabase,
+  isDatabaseAvailable,
+  isDatabaseWorking,
+  maintainConnection,
+  getWorkingConnection,
+  retryOperation,
+  getDatabaseStatus,
+  testDatabaseConnection,
+  testNetworkConnectivity,
+  authenticateUser,
+  createNotification,
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  getUnreadNotificationCount,
+  saveScanHistory,
+  getScanHistory,
+  clearScanHistory,
+  deleteScanHistory
+};
