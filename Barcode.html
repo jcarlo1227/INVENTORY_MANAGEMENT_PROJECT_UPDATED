@@ -556,6 +556,23 @@
   50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
   100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
 }
+
+/* Test barcode display styles */
+#testBarcodeDisplay {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 2px solid var(--success-color);
+  transition: all 0.3s ease;
+}
+
+#testBarcodeDisplay:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+#testBarcodeCanvas {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
     
     /* Video container improvements */
     .video-container {
@@ -747,6 +764,18 @@
           <button class="btn btn-outline-warning btn-sm" onclick="testCameraDisplay()" title="Test camera display">
             <i class="bi bi-camera"></i> Test Camera
           </button>
+          <button class="btn btn-outline-success btn-sm" onclick="generateTestBarcode()" title="Generate test barcode">
+            <i class="bi bi-upc-scan"></i> Test Barcode
+          </button>
+          <button class="btn btn-outline-info btn-sm" onclick="generateMultipleTestBarcodes()" title="Generate multiple test barcodes">
+            <i class="bi bi-collection"></i> Multiple
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="simulateBarcodeScan()" title="Simulate barcode scan for testing">
+            <i class="bi bi-play-circle"></i> Simulate
+          </button>
+          <button class="btn btn-outline-danger btn-sm" onclick="clearTestBarcode()" title="Clear test barcode display">
+            <i class="bi bi-x-circle"></i> Clear
+          </button>
         </div>
 
         <!-- Scanner Area -->
@@ -769,6 +798,12 @@
                </div>
                <div>Scanning...</div>
                <div style="font-size: 0.8rem; margin-top: 4px; opacity: 0.8;">Point camera at barcode</div>
+             </div>
+             <!-- Test barcode display -->
+             <div id="testBarcodeDisplay" style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 8px; display: none; max-width: 200px;">
+               <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Test Barcode:</div>
+               <canvas id="testBarcodeCanvas" style="max-width: 100%; height: auto;"></canvas>
+               <div style="font-size: 0.7rem; margin-top: 4px; color: #666;">Scan this with camera</div>
              </div>
           </div>
           <div class="mt-2">
@@ -1337,6 +1372,217 @@ async function testCameraDisplay() {
   } catch (error) {
     console.error('❌ Test camera failed:', error);
     showMessage(`Test camera failed: ${error.message}`, 'error');
+  }
+}
+
+function generateTestBarcode() {
+  console.log('🎯 Generating test barcode...');
+  
+  try {
+    // Create a test barcode in the same format as Inventory.html
+    const testCode = 'TEST-001-123'; // Format: itemCode-id
+    const canvas = document.getElementById('testBarcodeCanvas');
+    const display = document.getElementById('testBarcodeDisplay');
+    
+    if (canvas && display) {
+      // Set canvas dimensions
+      canvas.width = 200;
+      canvas.height = 80;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Clear canvas with white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw barcode bars (CODE128 style)
+      ctx.fillStyle = 'black';
+      const barWidth = 2;
+      let x = 10;
+      
+      // Generate bars based on the test code
+      for (let i = 0; i < testCode.length; i++) {
+        const charCode = testCode.charCodeAt(i);
+        // Create varying bar heights for visual effect
+        const barHeight = (charCode % 3 + 1) * 20 + 15;
+        const y = (canvas.height - barHeight) / 2;
+        
+        // Draw the main bar
+        ctx.fillRect(x, y, barWidth, barHeight);
+        x += barWidth + 1;
+        
+        // Add spacing between characters
+        if (i < testCode.length - 1) {
+          x += 2;
+        }
+      }
+      
+      // Add text below barcode
+      ctx.fillStyle = 'black';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(testCode, canvas.width / 2, canvas.height - 5);
+      
+      // Show the test barcode display
+      display.style.display = 'block';
+      
+      console.log('✅ Test barcode generated:', testCode);
+      showMessage(`Test barcode generated: ${testCode}`, 'success');
+      
+      // Auto-hide after 30 seconds
+      setTimeout(() => {
+        display.style.display = 'none';
+        console.log('🕒 Test barcode display auto-hidden');
+      }, 30000);
+      
+    } else {
+      console.error('❌ Test barcode canvas or display not found');
+      showMessage('Test barcode elements not found', 'error');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error generating test barcode:', error);
+    showMessage(`Error generating test barcode: ${error.message}`, 'error');
+  }
+}
+
+function generateMultipleTestBarcodes() {
+  console.log('🎯 Generating multiple test barcodes...');
+  
+  try {
+    // Create multiple test barcodes in the same format as Inventory.html
+    const testCodes = [
+      'ITEM-001-456',
+      'PROD-002-789',
+      'SKU-003-321',
+      'CODE-004-654'
+    ];
+    
+    const canvas = document.getElementById('testBarcodeCanvas');
+    const display = document.getElementById('testBarcodeDisplay');
+    
+    if (canvas && display) {
+      // Set canvas dimensions for multiple barcodes
+      canvas.width = 400;
+      canvas.height = 120;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Clear canvas with white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw multiple barcodes side by side
+      testCodes.forEach((code, index) => {
+        const startX = 10 + (index * 95); // 95px spacing between barcodes
+        
+        // Draw barcode bars
+        ctx.fillStyle = 'black';
+        const barWidth = 1.5;
+        let x = startX;
+        
+        for (let i = 0; i < code.length; i++) {
+          const charCode = code.charCodeAt(i);
+          const barHeight = (charCode % 3 + 1) * 15 + 10;
+          const y = (canvas.height - barHeight) / 2;
+          
+          ctx.fillRect(x, y, barWidth, barHeight);
+          x += barWidth + 0.5;
+          
+          if (i < code.length - 1) {
+            x += 1;
+          }
+        }
+        
+        // Add text below each barcode
+        ctx.fillStyle = 'black';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(code, startX + 40, canvas.height - 5);
+      });
+      
+      // Show the test barcode display
+      display.style.display = 'block';
+      
+      console.log('✅ Multiple test barcodes generated:', testCodes);
+      showMessage(`Multiple test barcodes generated for testing`, 'success');
+      
+      // Auto-hide after 45 seconds
+      setTimeout(() => {
+        display.style.display = 'none';
+        console.log('🕒 Test barcode display auto-hidden');
+      }, 45000);
+      
+    } else {
+      console.error('❌ Test barcode canvas or display not found');
+      showMessage('Test barcode elements not found', 'error');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error generating multiple test barcodes:', error);
+    showMessage(`Error generating test barcodes: ${error.message}`, 'error');
+  }
+}
+
+function simulateBarcodeScan() {
+  console.log('🧪 Simulating barcode scan...');
+  
+  try {
+    // Generate a test barcode code
+    const testCode = 'SIM-001-' + Date.now().toString().slice(-3);
+    
+    // Show the test barcode first
+    generateTestBarcode();
+    
+    // Simulate the scan after a short delay
+    setTimeout(() => {
+      console.log('📱 Simulating scan of:', testCode);
+      
+      // Process the simulated scan
+      const now = Date.now();
+      lastScannedCode = testCode;
+      lastScannedAt = now;
+      
+      // Process the scan and add to history
+      console.log('📝 Processing simulated barcode scan:', testCode);
+      processScan(testCode, 'barcode');
+      
+      // Show success feedback
+      showMessage(`Simulated barcode scan: ${testCode}`, 'success');
+      
+      // Update status
+      updateStatus('success', `Simulated scan: ${testCode}`);
+      
+    }, 2000); // Wait 2 seconds for barcode to be visible
+    
+  } catch (error) {
+    console.error('❌ Error simulating barcode scan:', error);
+    showMessage(`Error simulating scan: ${error.message}`, 'error');
+  }
+}
+
+function clearTestBarcode() {
+  console.log('🧹 Clearing test barcode display...');
+  
+  try {
+    const display = document.getElementById('testBarcodeDisplay');
+    const canvas = document.getElementById('testBarcodeCanvas');
+    
+    if (display) {
+      display.style.display = 'none';
+    }
+    
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    console.log('✅ Test barcode display cleared');
+    showMessage('Test barcode display cleared', 'info');
+    
+  } catch (error) {
+    console.error('❌ Error clearing test barcode:', error);
+    showMessage(`Error clearing test barcode: ${error.message}`, 'error');
   }
 }
 
@@ -3270,14 +3516,22 @@ function startBarcodeDecoder(video) {
       }
       
       if (result) {
-        console.log('🎯 Barcode detected:', result.getText ? result.getText() : (result.text || '').toString());
+        const scannedText = result.getText ? result.getText() : (result.text || '').toString();
+        console.log('🎯 Barcode detected:', scannedText);
+        
         const now = Date.now();
-        const text = result.getText ? result.getText() : (result.text || '').toString();
         // Throttle duplicate scans within 1.5s
-        if (text && (text !== lastScannedCode || now - lastScannedAt > 1500)) {
-          lastScannedCode = text;
+        if (scannedText && (scannedText !== lastScannedCode || now - lastScannedAt > 1500)) {
+          lastScannedCode = scannedText;
           lastScannedAt = now;
-          processScan(text, 'barcode');
+          
+          // Process the scan and add to history
+          console.log('📝 Processing scanned barcode:', scannedText);
+          processScan(scannedText, 'barcode');
+          
+          // Show success feedback
+          showMessage(`Barcode detected: ${scannedText}`, 'success');
+          
           if (!continuousMode) {
             stopScanning();
           }
