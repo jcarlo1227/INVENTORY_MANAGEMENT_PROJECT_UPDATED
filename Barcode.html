@@ -625,6 +625,88 @@
   background-color: var(--sub-header);
   border-color: var(--sub-header);
 }
+
+/* Layout improvements for scan history and barcode generator */
+.scanner-card {
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.scanner-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+.scanner-card h5 {
+  color: var(--header-color);
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.scan-history {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--main-bg);
+}
+
+.barcode-items-grid {
+  max-height: 500px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--main-bg);
+  padding: 1rem;
+}
+
+/* Filter button improvements */
+.scanner-card .btn-sm {
+  margin: 0 0.25rem;
+  font-size: 0.8rem;
+  padding: 0.375rem 0.75rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .scanner-card {
+    margin-bottom: 1rem;
+  }
+  
+  .scanner-card h5 {
+    font-size: 1.1rem;
+  }
+  
+  .barcode-items-grid {
+    max-height: 300px;
+  }
+}
+
+/* Scanner controls improvements */
+.scanner-controls {
+  background: var(--main-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.scanner-controls .btn {
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.scanner-controls .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.scanner-controls .btn-sm {
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+}
     
     /* Video container improvements */
     .video-container {
@@ -806,26 +888,42 @@
         </div>
 
         <!-- Scanner Controls -->
-        <div class="scanner-controls">
-          <button class="btn btn-outline-success" onclick="continuousScan()" id="continuousBtn">
-            <i class="bi bi-arrow-repeat"></i> Continuous Scan
-          </button>
-          <button class="btn btn-outline-info btn-sm" onclick="debugCameraState()" title="Debug camera state">
-            <i class="bi bi-bug"></i> Debug
-          </button>
-          <button class="btn btn-outline-warning btn-sm" onclick="testCameraDisplay()" title="Test camera display">
-            <i class="bi bi-camera"></i> Test Camera
-          </button>
-          <button class="btn btn-outline-success btn-sm" onclick="generateInventoryBarcode()" title="Generate barcode from inventory data">
-            <i class="bi bi-upc-scan"></i> Inventory Barcode
-          </button>
-
-          <button class="btn btn-outline-secondary btn-sm" onclick="simulateBarcodeScan()" title="Simulate barcode scan for testing">
-            <i class="bi bi-play-circle"></i> Simulate
-          </button>
-          <button class="btn btn-outline-danger btn-sm" onclick="clearTestBarcode()" title="Clear test barcode display">
-            <i class="bi bi-x-circle"></i> Clear
-          </button>
+        <div class="scanner-controls mb-3">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <button class="btn btn-outline-success w-100" onclick="continuousScan()" id="continuousBtn">
+                <i class="bi bi-arrow-repeat"></i> Continuous Scan
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button class="btn btn-outline-info w-100" onclick="generateInventoryBarcode()" title="Generate barcode from inventory data">
+                <i class="bi bi-upc-scan"></i> Generate Barcode
+              </button>
+            </div>
+          </div>
+          
+          <div class="row g-2 mt-2">
+            <div class="col-md-3">
+              <button class="btn btn-outline-warning btn-sm w-100" onclick="testCameraDisplay()" title="Test camera display">
+                <i class="bi bi-camera"></i> Test Camera
+              </button>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-outline-secondary btn-sm w-100" onclick="simulateBarcodeScan()" title="Simulate barcode scan for testing">
+                <i class="bi bi-play-circle"></i> Simulate
+              </button>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-outline-info btn-sm w-100" onclick="debugCameraState()" title="Debug camera state">
+                <i class="bi bi-bug"></i> Debug
+              </button>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-outline-danger btn-sm w-100" onclick="clearTestBarcode()" title="Clear test barcode display">
+                <i class="bi bi-x-circle"></i> Clear
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Scanner Area -->
@@ -857,62 +955,6 @@
              </div>
            </div>
            
-           <!-- Product Selection Modal for Barcode Generation -->
-           <div class="modal fade" id="barcodeProductModal" tabindex="-1" aria-labelledby="barcodeProductModalLabel" aria-hidden="true">
-             <div class="modal-dialog modal-lg">
-               <div class="modal-content">
-                 <div class="modal-header">
-                   <h5 class="modal-title" id="barcodeProductModalLabel">
-                     <i class="bi bi-upc-scan"></i> Select Product for Barcode Generation
-                   </h5>
-                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                 </div>
-                 <div class="modal-body">
-                   <!-- Search and Filter Controls -->
-                   <div class="row mb-3">
-                     <div class="col-md-6">
-                       <input type="text" class="form-control" id="barcodeProductSearch" placeholder="Search products...">
-                     </div>
-                     <div class="col-md-3">
-                       <select class="form-select" id="barcodeCategoryFilter">
-                         <option value="">All Categories</option>
-                       </select>
-                     </div>
-                     <div class="col-md-3">
-                       <select class="form-select" id="barcodeWarehouseFilter">
-                         <option value="">All Warehouses</option>
-                       </select>
-                     </div>
-                   </div>
-                   
-                   <!-- Product List -->
-                   <div class="table-responsive" style="max-height: 400px;">
-                     <table class="table table-hover">
-                       <thead class="table-light sticky-top">
-                         <tr>
-                           <th>Select</th>
-                           <th>Product</th>
-                           <th>Item Code</th>
-                           <th>Category</th>
-                           <th>Quantity</th>
-                           <th>Status</th>
-                         </tr>
-                       </thead>
-                       <tbody id="barcodeProductList">
-                         <!-- Products will be populated here -->
-                       </tbody>
-                     </table>
-                   </div>
-                 </div>
-                 <div class="modal-footer">
-                   <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                   <button type="button" class="btn btn-primary" id="generateSelectedBarcode" disabled>
-                     <i class="bi bi-upc-scan"></i> Generate Barcode
-                   </button>
-                 </div>
-               </div>
-             </div>
-           </div>
           </div>
           <div class="mt-2">
             <h6>Point camera at barcode</h6>
@@ -940,6 +982,8 @@
           <span class="text-muted">Total scans: <span id="scanCount">0</span></span>
           <div>
             <button class="btn btn-sm btn-outline-primary" onclick="filterHistory('barcode')">Barcode</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterHistory('qr')">QR Code</button>
+            <button class="btn btn-sm btn-outline-info" onclick="filterHistory('all')">All</button>
           </div>
         </div>
         
@@ -953,27 +997,27 @@
       
       <!-- Barcode Generation Section -->
       <div class="scanner-card">
-        <h5><i class="bi bi-upc-scan me-2"></i>Inventory Barcode Generator</h5>
-        <p class="text-muted">Generate barcodes for inventory items</p>
+        <h5><i class="bi bi-upc-scan me-2"></i>Barcode Generation Tools</h5>
+        <p class="text-muted">Generate and manage barcodes for inventory items</p>
         
         <div class="row g-3 mb-3">
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label">Search Items</label>
             <input type="text" class="form-control" id="barcodeSearchInput" 
                    placeholder="Search by name or code..." onkeyup="filterBarcodeItems()">
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Category</label>
             <select class="form-select" id="barcodeCategoryFilter" onchange="filterBarcodeItems()">
               <option value="">All Categories</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Warehouse</label>
             <select class="form-select" id="barcodeWarehouseFilter" onchange="filterBarcodeItems()">
               <option value="">All Warehouses</option>
             </select>
-            </div>
+          </div>
         </div>
         
         <div class="barcode-items-grid" id="barcodeItemsGrid">
@@ -982,6 +1026,63 @@
             <p>Loading inventory items...</p>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Product Selection Modal for Barcode Generation -->
+<div class="modal fade" id="barcodeProductModal" tabindex="-1" aria-labelledby="barcodeProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="barcodeProductModalLabel">
+          <i class="bi bi-upc-scan"></i> Select Product for Barcode Generation
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Search and Filter Controls -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <input type="text" class="form-control" id="barcodeProductSearch" placeholder="Search products...">
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" id="barcodeProductCategoryFilter">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" id="barcodeProductWarehouseFilter">
+              <option value="">All Warehouses</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Product List -->
+        <div class="table-responsive" style="max-height: 400px;">
+          <table class="table table-hover">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Select</th>
+                <th>Product</th>
+                <th>Item Code</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="barcodeProductList">
+              <!-- Products will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="generateSelectedBarcode" disabled>
+          <i class="bi bi-upc-scan"></i> Generate Barcode
+        </button>
       </div>
     </div>
   </div>
@@ -3661,7 +3762,7 @@ function populateBarcodeProductModal() {
   
   try {
     // Populate category filter
-    const categoryFilter = document.getElementById('barcodeCategoryFilter');
+    const categoryFilter = document.getElementById('barcodeProductCategoryFilter');
     if (categoryFilter && categoriesData) {
       categoryFilter.innerHTML = '<option value="">All Categories</option>';
       categoriesData.forEach(category => {
@@ -3673,7 +3774,7 @@ function populateBarcodeProductModal() {
     }
     
     // Populate warehouse filter
-    const warehouseFilter = document.getElementById('barcodeWarehouseFilter');
+    const warehouseFilter = document.getElementById('barcodeProductWarehouseFilter');
     if (warehouseFilter && warehousesData) {
       warehouseFilter.innerHTML = '<option value="">All Warehouses</option>';
       warehousesData.forEach(warehouse => {
@@ -3759,7 +3860,7 @@ function addBarcodeModalEventListeners() {
   }
   
   // Category filter
-  const categoryFilter = document.getElementById('barcodeCategoryFilter');
+  const categoryFilter = document.getElementById('barcodeProductCategoryFilter');
   if (categoryFilter) {
     categoryFilter.addEventListener('change', function() {
       filterBarcodeProducts();
@@ -3767,7 +3868,7 @@ function addBarcodeModalEventListeners() {
   }
   
   // Warehouse filter
-  const warehouseFilter = document.getElementById('barcodeWarehouseFilter');
+  const warehouseFilter = document.getElementById('barcodeProductWarehouseFilter');
   if (warehouseFilter) {
     warehouseFilter.addEventListener('change', function() {
       filterBarcodeProducts();
@@ -3785,8 +3886,8 @@ function addBarcodeModalEventListeners() {
 
 function filterBarcodeProducts() {
   const searchTerm = document.getElementById('barcodeProductSearch')?.value.trim().toLowerCase() || '';
-  const categoryFilter = document.getElementById('barcodeCategoryFilter')?.value || '';
-  const warehouseFilter = document.getElementById('barcodeWarehouseFilter')?.value || '';
+  const categoryFilter = document.getElementById('barcodeProductCategoryFilter')?.value || '';
+  const warehouseFilter = document.getElementById('barcodeProductWarehouseFilter')?.value || '';
   
   let filteredData = inventoryData;
   
