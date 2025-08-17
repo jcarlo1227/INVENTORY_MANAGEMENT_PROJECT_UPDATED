@@ -360,6 +360,79 @@ app.get('/api/inventory/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Search inventory by code (item_code), id, or combined pattern (itemCode-id)
+app.get('/api/inventory/search', requireAuth, async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code || String(code).trim() === '') {
+      return res.status(400).json({ success: false, message: 'Missing code parameter' });
+    }
+
+    const db = require('./database');
+    const sqlConn = await db.sql();
+    const textCode = String(code).trim();
+
+    // Try numeric id
+    const asInt = parseInt(textCode, 10);
+    if (!Number.isNaN(asInt)) {
+      try {
+        const byId = await getInventoryItemById(asInt);
+        if (byId) return res.json({ success: true, data: byId });
+      } catch (_) {}
+    }
+
+    // Try combined pattern: itemCode-id
+    if (textCode.includes('-')) {
+      const last = textCode.split('-').pop();
+      const tailId = parseInt(last, 10);
+      if (!Number.isNaN(tailId)) {
+        try {
+          const byTail = await getInventoryItemById(tailId);
+          if (byTail) return res.json({ success: true, data: byTail });
+        } catch (_) {}
+      }
+    }
+
+    // Try by exact item_code
+    const rows = await sqlConn`
+      SELECT 
+        i.id,
+        i.item_code,
+        i.product_id,
+        i.unit_of_measure,
+        i.category_id,
+        i.status,
+        i.warehouse_id,
+        i.total_quantity,
+        i.created_at,
+        i.updated_at,
+        p.product_name,
+        p.product_description,
+        p.product_category,
+        p.product_image,
+        pp.price
+      FROM inventory_items i
+      LEFT JOIN products p ON p.product_id = i.product_id
+      LEFT JOIN LATERAL (
+        SELECT price FROM product_pricing px
+        WHERE px.product_id = i.product_id
+        ORDER BY effective_date DESC
+        LIMIT 1
+      ) pp ON true
+      WHERE i.item_code = ${textCode}
+      LIMIT 1`;
+
+    if (rows && rows.length) {
+      return res.json({ success: true, data: rows[0] });
+    }
+
+    return res.status(404).json({ success: false, message: 'Item not found' });
+  } catch (error) {
+    console.error('Search inventory error:', error);
+    res.status(500).json({ success: false, message: 'Failed to search inventory' });
+  }
+});
+
 // API: Insert new inventory item
 app.post('/api/inventory', requireAuth, async (req, res) => {
   try {
