@@ -436,6 +436,43 @@ app.put('/api/inventory/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Update only item quantity (set/add/subtract)
+app.post('/api/inventory/:id/quantity', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid item id' });
+    }
+
+    let { quantity, operation } = req.body || {};
+    const numericQuantity = Number(quantity);
+    if (!Number.isFinite(numericQuantity) || numericQuantity < 0) {
+      return res.status(400).json({ success: false, message: 'Invalid quantity value' });
+    }
+
+    const op = ['add', 'subtract', 'set'].includes(String(operation)) ? String(operation) : 'set';
+    const updated = await updateItemQuantity(id, numericQuantity, op);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+
+    try {
+      await createNotification(
+        'Inventory Quantity Updated',
+        `Item ${updated.item_code || updated.id}: quantity ${op === 'set' ? 'set to' : op} ${numericQuantity}`,
+        'info'
+      );
+    } catch (notifError) {
+      console.error('Failed to create notification:', notifError);
+    }
+
+    res.json({ success: true, message: 'Quantity updated', data: updated });
+  } catch (error) {
+    console.error('Update quantity error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update quantity', error: error?.message });
+  }
+});
+
 // API: Get all categories
 app.get('/api/categories', requireAuth, async (req, res) => {
   try {

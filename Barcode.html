@@ -1518,9 +1518,22 @@ async function lookupItem(code) {
   }
 }
 
-function showItemDetails(item) {
+async function showItemDetails(item) {
   const modal = new bootstrap.Modal(document.getElementById('itemLookupModal'));
   const content = document.getElementById('itemDetailsContent');
+  
+  // Fetch latest item details (especially quantity)
+  try {
+    const fresh = await apiCall(`/inventory/${item.id}`);
+    if (fresh && fresh.success && fresh.data) {
+      item = mapInventoryData([fresh.data])[0];
+      // Sync currentItem as well
+      currentItem = item;
+      // Also refresh local inventory cache entry
+      const idx = inventoryData.findIndex(it => it.id === item.id);
+      if (idx !== -1) inventoryData[idx] = item;
+    }
+  } catch (_) {}
   
   // Get category and warehouse names
   const category = categoriesData.find(c => c.category_id === item.categoryId);
@@ -1630,11 +1643,9 @@ async function updateInventoryQuantity() {
   }
   
   try {
-    const response = await apiCall(`/inventory/${currentItem.id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        total_quantity: newQuantity
-      })
+    const response = await apiCall(`/inventory/${currentItem.id}/quantity`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity: newQuantity, operation: 'set' })
     });
     
     if (response.success) {
