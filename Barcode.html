@@ -537,11 +537,25 @@
     }
     
     /* Camera overlay styles */
-    #cameraOverlay {
-      font-weight: 600;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-      transition: all 0.3s ease;
-    }
+#cameraOverlay {
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  transition: all 0.3s ease;
+}
+
+/* Scanning overlay styles */
+#scanningOverlay {
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+}
     
     /* Video container improvements */
     .video-container {
@@ -744,10 +758,18 @@
                 Camera not active. Click "Start Barcode Scanner" to begin.
               </div>
             </video>
-            <!-- Camera status overlay -->
-            <div id="cameraOverlay" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; display: none;">
-              Camera Active
-            </div>
+                         <!-- Camera status overlay -->
+             <div id="cameraOverlay" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; display: none;">
+               Camera Active
+             </div>
+             <!-- Scanning indicator overlay -->
+             <div id="scanningOverlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 8px; font-size: 1rem; font-weight: 600; display: none; text-align: center;">
+               <div style="margin-bottom: 8px;">
+                 <i class="bi bi-camera" style="font-size: 1.2rem;"></i>
+               </div>
+               <div>Scanning...</div>
+               <div style="font-size: 0.8rem; margin-top: 4px; opacity: 0.8;">Point camera at barcode</div>
+             </div>
           </div>
           <div class="mt-2">
             <h6>Point camera at barcode</h6>
@@ -1204,6 +1226,17 @@ function showCameraOverlay(show) {
   }
 }
 
+function showScanningOverlay(show) {
+  const overlay = document.getElementById('scanningOverlay');
+  if (overlay) {
+    if (show) {
+      overlay.style.display = 'block';
+    } else {
+      overlay.style.display = 'none';
+    }
+  }
+}
+
 async function checkCameraAvailability() {
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1272,6 +1305,7 @@ async function testCameraDisplay() {
       
       // Show camera overlay
       showCameraOverlay(true);
+      showScanningOverlay(true);
       updateCameraStatus('Test Active', 'Testing camera display');
       
       // Remove placeholder
@@ -1288,6 +1322,7 @@ async function testCameraDisplay() {
         testStream.getTracks().forEach(track => track.stop());
         video.srcObject = null;
         showCameraOverlay(false);
+        showScanningOverlay(false);
         updateCameraStatus('Not active');
         showVideoPlaceholder();
         console.log('✅ Test camera stream stopped');
@@ -2972,6 +3007,10 @@ async function createVideoStream(videoConstraints, video, testStream) {
       showCameraOverlay(true);
 
       console.log('✅ Video stream created and set to video element');
+      
+      // Show success message
+      showMessage('Camera started successfully! Point camera at a barcode to scan.', 'success');
+      
     } catch (setError) {
       console.error('❌ Error setting video stream:', setError);
       throw setError;
@@ -3161,6 +3200,7 @@ async function createVideoStream(videoConstraints, video, testStream) {
       
       // Show camera overlay
       showCameraOverlay(true);
+      showScanningOverlay(true);
 
       console.log('✅ Fallback video stream created successfully');
       
@@ -3245,7 +3285,10 @@ function startBarcodeDecoder(video) {
       }
       
       if (err) {
-        console.log('⚠️ Decoder error (normal during scanning):', err);
+        // Only log non-normal scanning errors
+        if (err.message && !err.message.includes('No MultiFormat Readers were able to detect the code')) {
+          console.log('⚠️ Decoder error:', err);
+        }
       }
     });
     
@@ -3315,6 +3358,7 @@ function stopCameraBarcodeScanner() {
     
     // Hide camera overlay
     showCameraOverlay(false);
+    showScanningOverlay(false);
     
     // Show placeholder again
     showVideoPlaceholder();
