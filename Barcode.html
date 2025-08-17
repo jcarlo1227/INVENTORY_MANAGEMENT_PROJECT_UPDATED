@@ -2515,10 +2515,66 @@ async function startCameraBarcodeScanner() {
       .listVideoInputDevices()
       .then(videoInputDevices => {
         if (!videoInputDevices || videoInputDevices.length === 0) {
-          throw new Error('No video input devices found');
+          console.warn('⚠️ No video input devices found, will use facing mode');
+          // Don't throw error, continue with facing mode
         }
 
-        const preferredDeviceId = (videoInputDevices.find(d => /back|rear|environment/i.test(d.label)) || videoInputDevices[0])?.deviceId;
+        // Find the best camera device
+        let preferredDeviceId = null;
+        let videoConstraints = {};
+        
+        if (videoInputDevices && videoInputDevices.length > 0) {
+          console.log('📱 Available video devices:', videoInputDevices.map(d => ({
+            deviceId: d.deviceId,
+            label: d.label,
+            groupId: d.groupId
+          })));
+          
+          // Try to find a rear camera first
+          const rearCamera = videoInputDevices.find(d => 
+            d.label && /back|rear|environment/i.test(d.label)
+          );
+          
+          if (rearCamera) {
+            preferredDeviceId = rearCamera.deviceId;
+            console.log('📹 Using rear camera:', rearCamera.label);
+          } else {
+            // Fallback to first available camera
+            preferredDeviceId = videoInputDevices[0].deviceId;
+            console.log('📹 Using first available camera:', videoInputDevices[0].label);
+          }
+          
+          // Validate device ID
+          if (preferredDeviceId && preferredDeviceId.length > 0) {
+            // Build video constraints with device ID
+            videoConstraints = {
+              deviceId: { exact: preferredDeviceId },
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+            console.log('🎯 Using specific device ID:', preferredDeviceId);
+          } else {
+            // Invalid device ID, fallback to facing mode
+            console.warn('⚠️ Invalid device ID, falling back to facing mode');
+            videoConstraints = {
+              facingMode: 'environment',
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+          }
+        } else {
+          // No specific devices, use facing mode
+          videoConstraints = {
+            facingMode: 'environment',
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+          };
+          console.log('📹 Using facing mode (no specific device)');
+        }
+        
         updateStatus('scanning', 'Starting camera...');
         
         // Stop the test stream and create a new one for the video element
@@ -2528,13 +2584,10 @@ async function startCameraBarcodeScanner() {
         
         // Create a new stream for the video element
         try {
+          console.log('🎥 Creating video stream with constraints:', videoConstraints);
+          
           const videoStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              deviceId: preferredDeviceId ? { exact: preferredDeviceId } : undefined,
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              facingMode: preferredDeviceId ? undefined : 'environment'
-            } 
+            video: videoConstraints
           });
           
           // Set the stream to the video element
@@ -2544,14 +2597,47 @@ async function startCameraBarcodeScanner() {
           isCameraActive = true;
           
           console.log('✅ Video stream created and set to video element');
+          console.log('📊 Stream tracks:', videoStream.getTracks().map(t => ({
+            kind: t.kind,
+            label: t.label,
+            enabled: t.enabled,
+            readyState: t.readyState
+          })));
           
         } catch (streamError) {
           console.error('❌ Error creating video stream:', streamError);
-          showMessage('Failed to start camera stream. Please try again.', 'error');
-          updateStatus('error', 'Stream creation failed');
-          isCameraActive = false;
-          cameraStream = null;
-          return;
+          console.error('Stream error details:', {
+            name: streamError.name,
+            message: streamError.message,
+            constraint: streamError.constraint
+          });
+          
+          // Try fallback with simpler constraints
+          try {
+            console.log('🔄 Trying fallback with simpler constraints...');
+            const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+              video: { 
+                facingMode: 'environment',
+                width: { min: 320 },
+                height: { min: 240 }
+              } 
+            });
+            
+            video.srcObject = fallbackStream;
+            cameraStream = fallbackStream;
+            activeVideoElement = video;
+            isCameraActive = true;
+            
+            console.log('✅ Fallback video stream created successfully');
+            
+          } catch (fallbackError) {
+            console.error('❌ Fallback stream also failed:', fallbackError);
+            showMessage('Failed to start camera stream. Please check camera permissions and try again.', 'error');
+            updateStatus('error', 'Stream creation failed');
+            isCameraActive = false;
+            cameraStream = null;
+            return;
+          }
         }
         
         // Wait for video to be ready before starting decoder
