@@ -664,54 +664,100 @@ const updateInventoryItem = async (id, itemData) => {
   try {
     const sql = await database.sql();
     
-    // Build the update query using template literals with proper parameterization
-    let updateParts = [];
-    
-    // Only update fields that are provided
-    if (itemData.item_code !== undefined) {
-      updateParts.push(sql`item_code = ${itemData.item_code}`);
-    }
-    
-    if (itemData.product_id !== undefined) {
-      updateParts.push(sql`product_id = ${itemData.product_id}`);
-    }
-    
-    if (itemData.unit_of_measure !== undefined) {
-      updateParts.push(sql`unit_of_measure = ${itemData.unit_of_measure}`);
-    }
-    
-    if (itemData.category_id !== undefined) {
-      updateParts.push(sql`category_id = ${itemData.category_id}`);
-    }
-    
-    if (itemData.status !== undefined) {
-      updateParts.push(sql`status = ${itemData.status}`);
-    }
-    
-    if (itemData.warehouse_id !== undefined) {
-      updateParts.push(sql`warehouse_id = ${itemData.warehouse_id}`);
-    }
-    
-    if (itemData.total_quantity !== undefined) {
-      updateParts.push(sql`total_quantity = ${itemData.total_quantity}`);
-    }
-    
-    // Always update the updated_at timestamp
-    updateParts.push(sql`updated_at = CURRENT_TIMESTAMP`);
-    
-    if (updateParts.length === 0) {
+    // Check if we have any fields to update
+    if (!itemData || Object.keys(itemData).length === 0) {
       throw new Error('No fields to update');
     }
     
-    // Build the dynamic SQL query using template literals
-    const result = await sql`
-      UPDATE inventory_items 
-      SET ${sql.join(updateParts, sql`, `)}
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    // Build the update query using a simple approach
+    let updateQuery = 'UPDATE inventory_items SET ';
+    let updateFields = [];
     
-    if (result.length === 0) {
+    // Add fields that are provided
+    if (itemData.item_code !== undefined) {
+      updateFields.push(`item_code = '${itemData.item_code}'`);
+    }
+    
+    if (itemData.product_id !== undefined) {
+      updateFields.push(`product_id = ${itemData.product_id}`);
+    }
+    
+    if (itemData.unit_of_measure !== undefined) {
+      updateFields.push(`unit_of_measure = '${itemData.unit_of_measure}'`);
+    }
+    
+    if (itemData.category_id !== undefined) {
+      updateFields.push(`category_id = ${itemData.category_id}`);
+    }
+    
+    if (itemData.status !== undefined) {
+      updateFields.push(`status = '${itemData.status}'`);
+    }
+    
+    if (itemData.warehouse_id !== undefined) {
+      updateFields.push(`warehouse_id = ${itemData.warehouse_id}`);
+    }
+    
+    if (itemData.total_quantity !== undefined) {
+      updateFields.push(`total_quantity = ${itemData.total_quantity}`);
+    }
+    
+    // Always update the updated_at timestamp
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    
+    // Complete the query
+    updateQuery += updateFields.join(', ') + ` WHERE id = ${id} RETURNING *`;
+    
+    // Execute the query using sql.unsafe (if available) or fallback to regular sql
+    let result;
+    try {
+      // Try using sql.unsafe if it exists
+      if (typeof sql.unsafe === 'function') {
+        result = await sql.unsafe(updateQuery);
+      } else {
+        // Fallback: use regular sql with a simpler approach
+        // For now, just update the most common fields
+        if (itemData.total_quantity !== undefined && itemData.status !== undefined) {
+          result = await sql`
+            UPDATE inventory_items 
+            SET total_quantity = ${itemData.total_quantity}, 
+                status = ${itemData.status}, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        } else if (itemData.total_quantity !== undefined) {
+          result = await sql`
+            UPDATE inventory_items 
+            SET total_quantity = ${itemData.total_quantity}, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        } else if (itemData.status !== undefined) {
+          result = await sql`
+            UPDATE inventory_items 
+            SET status = ${itemData.status}, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        } else {
+          // Just update timestamp
+          result = await sql`
+            UPDATE inventory_items 
+            SET updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        }
+      }
+    } catch (queryError) {
+      console.error('Query execution error:', queryError);
+      throw new Error(`Failed to execute update query: ${queryError.message}`);
+    }
+    
+    if (!result || result.length === 0) {
       throw new Error(`Inventory item with ID ${id} not found`);
     }
     

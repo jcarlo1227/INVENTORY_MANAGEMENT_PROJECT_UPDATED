@@ -418,6 +418,16 @@ app.post('/api/inventory/delete-multiple', requireAuth, async (req, res) => {
 app.put('/api/inventory/:id', requireAuth, async (req, res) => {
   try {
     console.log('Updating inventory item:', req.params.id, 'with data:', req.body);
+    console.log('Request body type:', typeof req.body);
+    console.log('Request body keys:', Object.keys(req.body));
+    
+    // Validate the request
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No update data provided'
+      });
+    }
     
     const updatedItem = await updateInventoryItem(req.params.id, req.body);
     
@@ -427,6 +437,8 @@ app.put('/api/inventory/:id', requireAuth, async (req, res) => {
         message: 'Inventory item not found' 
       });
     }
+    
+    console.log('Successfully updated item:', updatedItem);
     
     // Create notification for successful item update
     try {
@@ -447,6 +459,7 @@ app.put('/api/inventory/:id', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('Error updating inventory item:', err);
+    console.error('Error stack:', err.stack);
     res.status(500).json({ 
       success: false, 
       message: 'Failed to update item',

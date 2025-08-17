@@ -1665,6 +1665,8 @@ async function updateInventoryQuantity() {
     }
     
     console.log('Sending update data:', updateData);
+    console.log('Current item ID:', currentItem.id);
+    console.log('Current item data:', currentItem);
     
     const response = await apiCall(`/inventory/${currentItem.id}`, {
       method: 'PUT',
