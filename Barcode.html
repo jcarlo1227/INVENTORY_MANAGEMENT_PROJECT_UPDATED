@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Barcode/RFID Scanner - Fox Control Hub</title>
+  <title>Barcode Scanner - Fox Control Hub</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <style>
@@ -167,10 +167,6 @@
 
     .scan-item.barcode {
       border-left-color: var(--secondary-color);
-    }
-
-    .scan-item.rfid {
-      border-left-color: var(--success-color);
     }
 
     .status-indicator {
@@ -693,9 +689,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <span class="text-muted">Total scans: <span id="scanCount">0</span></span>
           <div>
-            <button class="btn btn-sm btn-outline-primary" onclick="filterHistory('all')">All</button>
             <button class="btn btn-sm btn-outline-primary" onclick="filterHistory('barcode')">Barcode</button>
-            <button class="btn btn-sm btn-outline-success" onclick="filterHistory('rfid')">RFID</button>
           </div>
         </div>
         
@@ -782,7 +776,6 @@
                 <label class="form-label">Default Scanner Mode</label>
                 <select class="form-select" id="defaultScannerMode">
                   <option value="barcode" selected>Barcode</option>
-                  <option value="rfid">RFID</option>
                 </select>
               </div>
               <div class="col-md-6">
@@ -883,10 +876,6 @@
                     <option value="shipping">Shipping & Receiving</option>
                   </select>
                 </div>
-                <div class="col-12">
-                  <label class="form-label">Bio</label>
-                  <textarea class="form-control" rows="3" id="bio">Experienced scanner operator specializing in barcode and RFID systems for inventory management.</textarea>
-                </div>
               </div>
             </form>
           </div>
@@ -945,7 +934,7 @@ let categoriesData = [];
 let warehousesData = [];
 let currentItem = null;
 let isScanning = false;
-let scannerMode = 'barcode'; // 'barcode' or 'rfid'
+let scannerMode = 'barcode';
 let continuousMode = false;
 let scanTimeout = 30;
 let autoLookup = true;
@@ -1109,42 +1098,7 @@ function stopScanning() {
   document.getElementById('scannerArea').classList.remove('active');
   stopCameraBarcodeScanner();
 }
-
-function toggleScannerMode() {
-  scannerMode = scannerMode === 'barcode' ? 'rfid' : 'barcode';
-  updateScannerMode();
-}
-
-function updateScannerMode() {
-  const modeToggle = document.getElementById('modeToggle');
-  const scannerArea = document.getElementById('scannerArea');
   
-  if (scannerMode === 'barcode') {
-    if (modeToggle) modeToggle.innerHTML = '<i class="bi bi-toggle-off"></i> Barcode Mode';
-    scannerArea.innerHTML = `
-      <video id="barcodeVideo" autoplay playsinline style="width: 100%; max-height: 260px; border-radius: 8px; background: #000;"></video>
-      <div class="mt-2">
-        <h6>Point camera at barcode</h6>
-        <p class="text-muted">Or manually enter barcode below</p>
-      </div>
-    `;
-    // kick off if scanning is active
-    if (isScanning) startCameraBarcodeScanner();
-  } else {
-    if (modeToggle) modeToggle.innerHTML = '<i class="bi bi-toggle-on"></i> RFID Mode';
-    // stop camera when leaving barcode mode
-    stopCameraBarcodeScanner();
-    scannerArea.innerHTML = `
-      <i class="bi bi-broadcast" style="font-size: 3rem; color: var(--body-font); margin-bottom: 1rem;"></i>
-      <h6>Hold RFID tag near reader</h6>
-      <p class="text-muted">Or manually enter RFID code below</p>
-    `;
-  }
-  
-  document.getElementById('manualInput').placeholder = 
-    `Scan or type ${scannerMode} code here...`;
-}
-
 function continuousScan() {
   continuousMode = !continuousMode;
   const btn = document.getElementById('continuousBtn');
