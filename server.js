@@ -417,22 +417,54 @@ app.post('/api/inventory/delete-multiple', requireAuth, async (req, res) => {
 // API: Update inventory item
 app.put('/api/inventory/:id', requireAuth, async (req, res) => {
   try {
+    console.log('Updating inventory item:', req.params.id, 'with data:', req.body);
+    console.log('Request body type:', typeof req.body);
+    console.log('Request body keys:', Object.keys(req.body));
+    
+    // Validate the request
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No update data provided'
+      });
+    }
+    
     const updatedItem = await updateInventoryItem(req.params.id, req.body);
+    
+    if (!updatedItem) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Inventory item not found' 
+      });
+    }
+    
+    console.log('Successfully updated item:', updatedItem);
     
     // Create notification for successful item update
     try {
       await createNotification(
         'Item Updated Successfully',
-        `${updatedItem.name} (SKU: ${updatedItem.sku}) has been updated in inventory`,
+        `${updatedItem.product_name || updatedItem.item_code || 'Item'} has been updated in inventory`,
         'info'
       );
     } catch (notifError) {
       console.error('Failed to create notification:', notifError);
+      // Don't fail the request if notification fails
     }
     
-    res.json({ success: true, message: 'Item updated successfully', data: updatedItem });
+    res.json({ 
+      success: true, 
+      message: 'Item updated successfully', 
+      data: updatedItem 
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to update item' });
+    console.error('Error updating inventory item:', err);
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to update item',
+      error: err.message 
+    });
   }
 });
 

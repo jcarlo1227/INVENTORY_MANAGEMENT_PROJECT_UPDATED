@@ -663,29 +663,103 @@ const createInventoryItem = async (itemData) => {
 const updateInventoryItem = async (id, itemData) => {
   try {
     const sql = await database.sql();
-    const {
-      item_code,
-      product_id,
-      unit_of_measure,
-      category_id,
-      status,
-      warehouse_id,
-      total_quantity
-    } = itemData;
     
-    const result = await sql`
-      UPDATE inventory_items SET
-        item_code = ${item_code},
-        product_id = ${product_id},
-        unit_of_measure = ${unit_of_measure},
-        category_id = ${category_id},
-        status = ${status},
-        warehouse_id = ${warehouse_id},
-        total_quantity = ${total_quantity},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
-      RETURNING *
-    `;
+    // Check if we have any fields to update
+    if (!itemData || Object.keys(itemData).length === 0) {
+      throw new Error('No fields to update');
+    }
+    
+    // Build the update query using a simple approach
+    let updateQuery = 'UPDATE inventory_items SET ';
+    let updateFields = [];
+    
+    // Add fields that are provided
+    if (itemData.item_code !== undefined) {
+      updateFields.push(`item_code = '${itemData.item_code}'`);
+    }
+    
+    if (itemData.product_id !== undefined) {
+      updateFields.push(`product_id = ${itemData.product_id}`);
+    }
+    
+    if (itemData.unit_of_measure !== undefined) {
+      updateFields.push(`unit_of_measure = '${itemData.unit_of_measure}'`);
+    }
+    
+    if (itemData.category_id !== undefined) {
+      updateFields.push(`category_id = ${itemData.category_id}`);
+    }
+    
+    if (itemData.status !== undefined) {
+      updateFields.push(`status = '${itemData.status}'`);
+    }
+    
+    if (itemData.warehouse_id !== undefined) {
+      updateFields.push(`warehouse_id = ${itemData.warehouse_id}`);
+    }
+    
+    if (itemData.total_quantity !== undefined) {
+      updateFields.push(`total_quantity = ${itemData.total_quantity}`);
+    }
+    
+    // Always update the updated_at timestamp
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    
+    // Complete the query
+    updateQuery += updateFields.join(', ') + ` WHERE id = ${id} RETURNING *`;
+    
+    // Execute the query using sql.unsafe (if available) or fallback to regular sql
+    let result;
+    try {
+      // Try using sql.unsafe if it exists
+      if (typeof sql.unsafe === 'function') {
+        result = await sql.unsafe(updateQuery);
+      } else {
+        // Fallback: use regular sql with a simpler approach
+        // For now, just update the most common fields
+        if (itemData.total_quantity !== undefined && itemData.status !== undefined) {
+          result = await sql`
+            UPDATE inventory_items 
+            SET total_quantity = ${itemData.total_quantity}, 
+                status = ${itemData.status}, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        } else if (itemData.total_quantity !== undefined) {
+          result = await sql`
+            UPDATE inventory_items 
+            SET total_quantity = ${itemData.total_quantity}, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        } else if (itemData.status !== undefined) {
+          result = await sql`
+            UPDATE inventory_items 
+            SET status = ${itemData.status}, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        } else {
+          // Just update timestamp
+          result = await sql`
+            UPDATE inventory_items 
+            SET updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${id}
+            RETURNING *
+          `;
+        }
+      }
+    } catch (queryError) {
+      console.error('Query execution error:', queryError);
+      throw new Error(`Failed to execute update query: ${queryError.message}`);
+    }
+    
+    if (!result || result.length === 0) {
+      throw new Error(`Inventory item with ID ${id} not found`);
+    }
     
     return result[0];
   } catch (err) {

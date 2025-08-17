@@ -944,12 +944,19 @@ let codeReader = null;
 let activeVideoElement = null;
 let lastScannedAt = 0;
 let lastScannedCode = '';
+let cameraStream = null;
+let isCameraActive = false;
 
 // API Helper Functions
 const API_BASE = '/api';
 
 async function apiCall(endpoint, options = {}) {
   try {
+    console.log(`🌐 API Call: ${options.method || 'GET'} ${API_BASE}${endpoint}`);
+    if (options.body) {
+      console.log('📤 Request body:', options.body);
+    }
+    
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers: {
@@ -958,11 +965,31 @@ async function apiCall(endpoint, options = {}) {
       }
     });
     
+    console.log(`📥 Response status: ${response.status}`);
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      // Try to get more detailed error information
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage += ` - ${errorData.message}`;
+        }
+        if (errorData.error) {
+          errorMessage += ` - ${errorData.error}`;
+        }
+      } catch (parseError) {
+        // If we can't parse the error response, use the status text
+        errorMessage += ` - ${response.statusText}`;
+      }
+      
+      throw new Error(errorMessage);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log('📥 Response data:', data);
+    return data;
   } catch (error) {
     console.error('API call failed:', error);
     throw error;
@@ -1079,6 +1106,12 @@ function startBarcodeScanner() {
 
 
 function startScanning() {
+  if (isScanning) {
+    console.log('⚠️ Scanner is already running');
+    return;
+  }
+  
+  console.log('🚀 Starting scanner...');
   isScanning = true;
   updateStatus('scanning', `Scanning for ${scannerMode.toUpperCase()}...`);
   document.getElementById('scannerArea').classList.add('active');
@@ -1087,12 +1120,19 @@ function startScanning() {
   // Auto-stop scanning after timeout
   setTimeout(() => {
     if (isScanning && !continuousMode) {
+      console.log('⏰ Auto-stopping scanner due to timeout');
       stopScanning();
     }
   }, scanTimeout * 1000);
 }
 
 function stopScanning() {
+  if (!isScanning) {
+    console.log('⚠️ Scanner is already stopped');
+    return;
+  }
+  
+  console.log('🛑 Stopping scanner...');
   isScanning = false;
   updateStatus('ready', 'Scanner stopped');
   document.getElementById('scannerArea').classList.remove('active');
@@ -1104,12 +1144,18 @@ function continuousScan() {
   const btn = document.getElementById('continuousBtn');
   
   if (continuousMode) {
+    console.log('🔄 Starting continuous scan mode...');
     btn.innerHTML = '<i class="bi bi-pause"></i> Stop Continuous';
     btn.classList.remove('btn-outline-success');
     btn.classList.add('btn-success');
-    startScanning();
+    
+    // Ensure scanner is started
+    if (!isScanning) {
+      startScanning();
+    }
     startCameraBarcodeScanner();
   } else {
+    console.log('⏹️ Stopping continuous scan mode...');
     btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Continuous Scan';
     btn.classList.remove('btn-success');
     btn.classList.add('btn-outline-success');
@@ -1394,11 +1440,12 @@ function updateScanHistory() {
               ${statusIcon}
               <strong class="ms-2">${scan.code}</strong>
               ${scan.item ? `<span class="badge bg-info ms-2">${scan.item.productName}</span>` : ''}
+              ${scan.item ? `<span class="badge ${scan.item.status === 'active' ? 'bg-success' : scan.item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'} ms-2">${scan.item.status}</span>` : ''}
             </div>
             <small class="text-muted">
               <i class="bi bi-${scan.type === 'barcode' ? 'upc-scan' : 'broadcast'}"></i>
               ${scan.type.toUpperCase()} • ${scan.timestamp.toLocaleString()}
-              ${scan.item ? ` • Qty: ${scan.item.totalQuantity}` : ''}
+              ${scan.item ? ` • Qty: ${scan.item.totalQuantity} • Status: ${scan.item.status}` : ''}
             </small>
           </div>
           <div>
@@ -1486,7 +1533,7 @@ function showItemDetails(item) {
         <div class="col-md-6">
           <strong>Item Code:</strong> ${item.itemCode}<br>
           <strong>Product Name:</strong> ${item.productName}<br>
-          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : 'bg-danger'}">${item.status}</span>
+          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'}">${item.status}</span>
         </div>
         <div class="col-md-6">
           <strong>Current Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}<br>
@@ -1517,6 +1564,7 @@ function showItemDetails(item) {
         <button class="btn btn-sm btn-warning" onclick="setQuickQuantity(10)">+10</button>
         <button class="btn btn-sm btn-info" onclick="setQuickQuantity(50)">+50</button>
         <button class="btn btn-sm btn-primary" onclick="setQuickQuantity(100)">+100</button>
+        ${item.status === 'out of stock' ? `<button class="btn btn-sm btn-success" onclick="restockItem()">Restock Item</button>` : ''}
       </div>
       
       <div class="barcode-section mt-3">
@@ -1574,6 +1622,25 @@ function setQuickQuantity(value) {
   }
 }
 
+function restockItem() {
+  if (!currentItem) return;
+  
+  // Set a reasonable restock quantity (you can adjust this logic)
+  let restockQuantity = 50; // Default restock amount
+  
+  // If the item had a previous quantity, use that as a reference
+  if (currentItem.totalQuantity > 0) {
+    restockQuantity = Math.max(50, Math.ceil(currentItem.totalQuantity * 0.5));
+  }
+  
+  // Set the quantity input
+  const input = document.getElementById('newQuantity');
+  input.value = restockQuantity;
+  
+  // Show a message about the restock
+  showMessage(`Restock quantity set to ${restockQuantity} for ${currentItem.productName}`, 'info');
+}
+
 async function updateInventoryQuantity() {
   if (!currentItem) return;
   
@@ -1583,23 +1650,68 @@ async function updateInventoryQuantity() {
     return;
   }
   
+  // Determine new status based on quantity and current status
+  let newStatus = currentItem.status;
+  
+  // If current status is 'out of stock' and new quantity > 0, change to 'active'
+  if (currentItem.status === 'out of stock' && newQuantity > 0) {
+    newStatus = 'active';
+  }
+  // If new quantity is 0, change status to 'out of stock'
+  else if (newQuantity === 0) {
+    newStatus = 'out of stock';
+  }
+  
+  // Show confirmation if status will change
+  if (newStatus !== currentItem.status) {
+    const statusChangeMessage = newStatus === 'active' 
+      ? `This will change the status from 'out of stock' to 'active' for ${currentItem.productName}.`
+      : `This will change the status to 'out of stock' for ${currentItem.productName}.`;
+    
+    if (!confirm(`${statusChangeMessage}\n\nDo you want to continue?`)) {
+      return;
+    }
+  }
+  
   try {
+    showMessage('Updating inventory...', 'info');
+    
+    const updateData = {
+      total_quantity: newQuantity
+    };
+    
+    // Only include status update if it's changing
+    if (newStatus !== currentItem.status) {
+      updateData.status = newStatus;
+    }
+    
+    console.log('Sending update data:', updateData);
+    console.log('Current item ID:', currentItem.id);
+    console.log('Current item data:', currentItem);
+    
     const response = await apiCall(`/inventory/${currentItem.id}`, {
       method: 'PUT',
-      body: JSON.stringify({
-        total_quantity: newQuantity
-      })
+      body: JSON.stringify(updateData)
     });
     
     if (response.success) {
       // Update local data
       currentItem.totalQuantity = newQuantity;
+      currentItem.status = newStatus;
+      
       const index = inventoryData.findIndex(item => item.id === currentItem.id);
       if (index !== -1) {
         inventoryData[index].totalQuantity = newQuantity;
+        inventoryData[index].status = newStatus;
       }
       
-      showMessage(`Quantity updated successfully for ${currentItem.productName}`, 'success');
+      // Show appropriate message based on what was updated
+      let message = `Quantity updated successfully for ${currentItem.productName}`;
+      if (newStatus !== currentItem.status) {
+        message += `. Status changed from '${currentItem.status}' to '${newStatus}'`;
+      }
+      
+      showMessage(message, 'success');
       bootstrap.Modal.getInstance(document.getElementById('itemLookupModal')).hide();
       
       // Log activity
@@ -1607,12 +1719,38 @@ async function updateInventoryQuantity() {
       
       // Refresh notifications
       refreshNotifications();
+      
+      // Update the item details display to reflect the new status
+      if (newStatus !== currentItem.status) {
+        // Update the status badge in the modal if it's still open
+        const statusBadge = document.querySelector('#itemDetailsContent .badge');
+        if (statusBadge) {
+          statusBadge.className = `badge ${newStatus === 'active' ? 'bg-success' : newStatus === 'out of stock' ? 'bg-danger' : 'bg-warning'}`;
+          statusBadge.textContent = newStatus;
+        }
+      }
+      
+      // Refresh inventory data to ensure consistency
+      setTimeout(() => {
+        loadInventoryData();
+      }, 1000);
     } else {
       showMessage(response.message || 'Failed to update quantity', 'error');
     }
   } catch (error) {
     console.error('Error updating quantity:', error);
-    showMessage('Error updating quantity', 'error');
+    
+    // Provide more specific error messages
+    let errorMessage = 'Error updating quantity';
+    if (error.message.includes('HTTP error! status: 500')) {
+      errorMessage = 'Server error occurred while updating quantity. Please try again.';
+    } else if (error.message.includes('HTTP error! status: 404')) {
+      errorMessage = 'Inventory item not found. Please refresh the page and try again.';
+    } else if (error.message.includes('fetch')) {
+      errorMessage = 'Network error. Please check your connection and try again.';
+    }
+    
+    showMessage(errorMessage, 'error');
   }
 }
 
@@ -1785,6 +1923,22 @@ function playBeep() {
 document.addEventListener('visibilitychange', function() {
   if (!document.hidden) {
     focusInput();
+  }
+});
+
+// Cleanup camera when page is unloaded
+window.addEventListener('beforeunload', function() {
+  if (isCameraActive) {
+    console.log('🧹 Cleaning up camera before page unload...');
+    stopCameraBarcodeScanner();
+  }
+});
+
+// Cleanup camera when page loses focus
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && isCameraActive) {
+    console.log('👁️ Page hidden, stopping camera...');
+    stopCameraBarcodeScanner();
   }
 });
 
@@ -2169,7 +2323,8 @@ function populateBarcodeItems() {
           <strong>Code:</strong> ${item.itemCode}<br>
           <strong>Category:</strong> ${category?.category_name || 'N/A'}<br>
           <strong>Warehouse:</strong> ${warehouse?.warehouse_name || 'N/A'}<br>
-          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}
+          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}<br>
+          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'}">${item.status}</span>
         </div>
         
         <div class="barcode-preview" id="barcode-preview-${item.id}">
@@ -2248,7 +2403,8 @@ function filterBarcodeItems() {
           <strong>Code:</strong> ${item.itemCode}<br>
           <strong>Category:</strong> ${category?.category_name || 'N/A'}<br>
           <strong>Warehouse:</strong> ${warehouse?.warehouse_name || 'N/A'}<br>
-          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}
+          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}<br>
+          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'}">${item.status}</span>
         </div>
         
         <div class="barcode-preview" id="barcode-preview-${item.id}">
@@ -2271,7 +2427,7 @@ function filterBarcodeItems() {
   }).join('');
 }
 
-function startCameraBarcodeScanner() {
+async function startCameraBarcodeScanner() {
   try {
     if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
       console.warn('ZXing not loaded; skipping camera scanner');
@@ -2279,62 +2435,443 @@ function startCameraBarcodeScanner() {
     }
     if (scannerMode !== 'barcode') return;
 
+    // Check if camera is already active
+    if (isCameraActive) {
+      console.log('⚠️ Camera is already active, stopping previous session...');
+      stopCameraBarcodeScanner();
+      // Wait a bit for cleanup
+      setTimeout(() => startCameraBarcodeScanner(), 500);
+      return;
+    }
+
+    // Check camera permissions and get initial stream
+    let testStream = null;
+    try {
+      testStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'environment' // Prefer rear camera
+        } 
+      });
+      console.log('✅ Camera permissions granted and test stream created');
+    } catch (permissionError) {
+      console.error('❌ Camera permission error:', permissionError);
+      if (permissionError.name === 'NotAllowedError') {
+        showMessage('Camera access denied. Please allow camera permissions in your browser.', 'error');
+        updateStatus('error', 'Camera permission denied');
+        return;
+      } else if (permissionError.name === 'NotFoundError') {
+        showMessage('No camera found on this device.', 'warning');
+        updateStatus('error', 'No camera found');
+        return;
+      } else if (permissionError.name === 'NotReadableError') {
+        showMessage('Camera is already in use by another application.', 'warning');
+        updateStatus('error', 'Camera in use');
+        return;
+      }
+      throw permissionError;
+    }
+
     const video = document.getElementById('barcodeVideo');
     if (!video) return;
 
+    // Stop any existing video streams first
+    if (video.srcObject) {
+      const tracks = video.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      video.srcObject = null;
+    }
+
+    // Reset video element completely
+    video.pause();
+    video.currentTime = 0;
+    video.src = '';
+    video.load();
+    
+    // Set video properties for better compatibility
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+    video.controls = false;
+    
+    // Wait a bit for video element to reset
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Create new code reader instance if needed
     if (!codeReader) {
       codeReader = new ZXing.BrowserMultiFormatReader();
+    } else {
+      // Reset existing code reader
+      try {
+        codeReader.reset();
+      } catch (resetError) {
+        console.log('Code reader reset error (normal):', resetError.message);
+      }
     }
 
     // Prefer environment (rear) camera
     codeReader
       .listVideoInputDevices()
       .then(videoInputDevices => {
-        const preferredDeviceId = (videoInputDevices.find(d => /back|rear|environment/i.test(d.label)) || videoInputDevices[0])?.deviceId;
+        if (!videoInputDevices || videoInputDevices.length === 0) {
+          console.warn('⚠️ No video input devices found, will use facing mode');
+          // Don't throw error, continue with facing mode
+        }
+
+        // Find the best camera device
+        let preferredDeviceId = null;
+        let videoConstraints = {};
+        
+        if (videoInputDevices && videoInputDevices.length > 0) {
+          console.log('📱 Available video devices:', videoInputDevices.map(d => ({
+            deviceId: d.deviceId,
+            label: d.label,
+            groupId: d.groupId
+          })));
+          
+          // Try to find a rear camera first
+          const rearCamera = videoInputDevices.find(d => 
+            d.label && /back|rear|environment/i.test(d.label)
+          );
+          
+          if (rearCamera) {
+            preferredDeviceId = rearCamera.deviceId;
+            console.log('📹 Using rear camera:', rearCamera.label);
+          } else {
+            // Fallback to first available camera
+            preferredDeviceId = videoInputDevices[0].deviceId;
+            console.log('📹 Using first available camera:', videoInputDevices[0].label);
+          }
+          
+          // Validate device ID
+          if (preferredDeviceId && preferredDeviceId.length > 0) {
+            // Build video constraints with device ID
+            videoConstraints = {
+              deviceId: { exact: preferredDeviceId },
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+            console.log('🎯 Using specific device ID:', preferredDeviceId);
+          } else {
+            // Invalid device ID, fallback to facing mode
+            console.warn('⚠️ Invalid device ID, falling back to facing mode');
+            videoConstraints = {
+              facingMode: 'environment',
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+          }
+        } else {
+          // No specific devices, use facing mode
+          videoConstraints = {
+            facingMode: 'environment',
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+          };
+          console.log('📹 Using facing mode (no specific device)');
+        }
+        
         updateStatus('scanning', 'Starting camera...');
-        activeVideoElement = video;
-        return codeReader.decodeFromVideoDevice(preferredDeviceId, video, (result, err, controls) => {
-          if (!isScanning) {
-            try { controls?.stop(); } catch (_) {}
+        
+        // Stop the test stream and create a new one for the video element
+        if (testStream) {
+          testStream.getTracks().forEach(track => track.stop());
+        }
+        
+        // Create a new stream for the video element
+        try {
+          console.log('🎥 Creating video stream with constraints:', videoConstraints);
+          
+          const videoStream = await navigator.mediaDevices.getUserMedia({ 
+            video: videoConstraints
+          });
+          
+          // Set the stream to the video element
+          video.srcObject = videoStream;
+          cameraStream = videoStream;
+          activeVideoElement = video;
+          isCameraActive = true;
+          
+          console.log('✅ Video stream created and set to video element');
+          console.log('📊 Stream tracks:', videoStream.getTracks().map(t => ({
+            kind: t.kind,
+            label: t.label,
+            enabled: t.enabled,
+            readyState: t.readyState
+          })));
+          
+        } catch (streamError) {
+          console.error('❌ Error creating video stream:', streamError);
+          console.error('Stream error details:', {
+            name: streamError.name,
+            message: streamError.message,
+            constraint: streamError.constraint
+          });
+          
+          // Try fallback with simpler constraints
+          try {
+            console.log('🔄 Trying fallback with simpler constraints...');
+            const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+              video: { 
+                facingMode: 'environment',
+                width: { min: 320 },
+                height: { min: 240 }
+              } 
+            });
+            
+            video.srcObject = fallbackStream;
+            cameraStream = fallbackStream;
+            activeVideoElement = video;
+            isCameraActive = true;
+            
+            console.log('✅ Fallback video stream created successfully');
+            
+          } catch (fallbackError) {
+            console.error('❌ Fallback stream also failed:', fallbackError);
+            showMessage('Failed to start camera stream. Please check camera permissions and try again.', 'error');
+            updateStatus('error', 'Stream creation failed');
+            isCameraActive = false;
+            cameraStream = null;
             return;
           }
-          if (result) {
-            const now = Date.now();
-            const text = result.getText ? result.getText() : (result.text || '').toString();
-            // Throttle duplicate scans within 1.5s
-            if (text && (text !== lastScannedCode || now - lastScannedAt > 1500)) {
-              lastScannedCode = text;
-              lastScannedAt = now;
-              processScan(text, 'barcode');
-              if (!continuousMode) {
-                stopScanning();
+        }
+        
+        // Wait for video to be ready before starting decoder
+        video.addEventListener('canplay', function videoCanPlayListener() {
+          video.removeEventListener('canplay', videoCanPlayListener);
+          
+          console.log('📹 Video is ready, starting decoder...');
+          console.log('Video state:', {
+            readyState: video.readyState,
+            networkState: video.networkState,
+            currentTime: video.currentTime,
+            duration: video.duration,
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight
+          });
+          
+          // Remove retry button if it exists
+          const retryBtn = document.querySelector('.manual-retry-btn');
+          if (retryBtn) {
+            retryBtn.remove();
+          }
+          
+          // Start the decoder
+          codeReader.decodeFromVideoDevice(preferredDeviceId, video, (result, err, controls) => {
+            if (!isScanning) {
+              try { 
+                if (controls && typeof controls.stop === 'function') {
+                  controls.stop(); 
+                }
+              } catch (stopError) {
+                console.log('Controls stop error (normal):', stopError.message);
+              }
+              return;
+            }
+            
+            if (result) {
+              const now = Date.now();
+              const text = result.getText ? result.getText() : (result.text || '').toString();
+              // Throttle duplicate scans within 1.5s
+              if (text && (text !== lastScannedCode || now - lastScannedAt > 1500)) {
+                lastScannedCode = text;
+                lastScannedAt = now;
+                processScan(text, 'barcode');
+                if (!continuousMode) {
+                  stopScanning();
+                }
               }
             }
+          });
+        }, { once: true });
+        
+        // Set a timeout for video readiness
+        const videoReadyTimeout = setTimeout(() => {
+          if (!video.readyState || video.readyState < 2) {
+            console.warn('⚠️ Video not ready after timeout, attempting fallback...');
+            
+            // Try to start decoder anyway
+            if (isCameraActive && isScanning) {
+              console.log('🔄 Attempting to start decoder despite video timeout...');
+              codeReader.decodeFromVideoDevice(preferredDeviceId, video, (result, err, controls) => {
+                if (!isScanning) {
+                  try { 
+                    if (controls && typeof controls.stop === 'function') {
+                      controls.stop(); 
+                    }
+                  } catch (stopError) {
+                    console.log('Controls stop error (normal):', stopError.message);
+                  }
+                  return;
+                }
+                
+                if (result) {
+                  const now = Date.now();
+                  const text = result.getText ? result.getText() : (result.text || '').toString();
+                  if (text && (text !== lastScannedCode || now - lastScannedAt > 1500)) {
+                    lastScannedCode = text;
+                    lastScannedAt = now;
+                    processScan(text, 'barcode');
+                    if (!continuousMode) {
+                      stopScanning();
+                    }
+                  }
+                }
+              });
+            }
           }
+        }, 5000);
+        
+        // Handle video errors
+        video.addEventListener('error', function videoErrorListener(e) {
+          console.error('❌ Video error:', e);
+          console.error('Video error details:', {
+            error: video.error,
+            networkState: video.networkState,
+            readyState: video.readyState,
+            src: video.src,
+            srcObject: video.srcObject
+          });
+          
+          // Clear the timeout
+          clearTimeout(videoReadyTimeout);
+          
+          video.removeEventListener('error', videoErrorListener);
+          
+          // Log additional diagnostic information
+          if (video.error) {
+            console.error('Video error code:', video.error.code);
+            console.error('Video error message:', video.error.message);
+          }
+          
+          // Try to recover from the error
+          setTimeout(() => {
+            if (isScanning && isCameraActive) {
+              console.log('🔄 Attempting to recover from video error...');
+              stopCameraBarcodeScanner();
+              setTimeout(() => {
+                if (isScanning) {
+                  startCameraBarcodeScanner();
+                }
+              }, 1000);
+            }
+          }, 2000);
+          
+          showMessage('Video error occurred. Attempting to recover...', 'warning');
+          updateStatus('error', 'Video error - recovering');
         });
+        
+        // Add additional event listeners for better debugging
+        video.addEventListener('loadstart', () => console.log('📹 Video loadstart event'));
+        video.addEventListener('loadedmetadata', () => console.log('📹 Video loadedmetadata event'));
+        video.addEventListener('loadeddata', () => console.log('📹 Video loadeddata event'));
+        video.addEventListener('canplay', () => console.log('📹 Video canplay event'));
+        video.addEventListener('canplaythrough', () => console.log('📹 Video canplaythrough event'));
+        video.addEventListener('playing', () => console.log('📹 Video playing event'));
+        
+        // Add a manual retry button to the scanner area
+        const scannerArea = document.getElementById('scannerArea');
+        if (scannerArea && !scannerArea.querySelector('.manual-retry-btn')) {
+          const retryBtn = document.createElement('button');
+          retryBtn.className = 'btn btn-warning btn-sm manual-retry-btn mt-2';
+          retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Camera';
+          retryBtn.onclick = () => {
+            console.log('🔄 Manual retry requested...');
+            stopCameraBarcodeScanner();
+            setTimeout(() => {
+              if (isScanning) {
+                startCameraBarcodeScanner();
+              }
+            }, 1000);
+          };
+          scannerArea.appendChild(retryBtn);
+        }
       })
       .catch(err => {
         console.error('Error starting camera scanner:', err);
-        showMessage('Could not access camera for scanning', 'warning');
+        
+        // Handle specific camera errors
+        if (err.name === 'NotAllowedError') {
+          showMessage('Camera access denied. Please allow camera permissions.', 'error');
+          updateStatus('error', 'Camera permission denied');
+        } else if (err.name === 'NotFoundError') {
+          showMessage('No camera found on this device.', 'warning');
+          updateStatus('error', 'No camera found');
+        } else if (err.name === 'NotReadableError') {
+          showMessage('Camera is already in use by another application.', 'warning');
+          updateStatus('error', 'Camera in use');
+        } else {
+          showMessage('Could not access camera for scanning', 'warning');
+          updateStatus('error', 'Camera access failed');
+        }
+        
+        // Reset camera state
+        isCameraActive = false;
+        cameraStream = null;
       });
   } catch (e) {
     console.error('Camera scanner init error:', e);
+    updateStatus('error', 'Camera initialization failed');
   }
 }
 
 function stopCameraBarcodeScanner() {
   try {
+    console.log('🛑 Stopping camera barcode scanner...');
+    
+    // Stop the code reader
     if (codeReader) {
-      try { codeReader.reset(); } catch (_) {}
+      try { 
+        codeReader.reset(); 
+        console.log('✅ Code reader reset');
+      } catch (resetError) {
+        console.log('⚠️ Code reader reset error (normal):', resetError.message);
+      }
     }
+    
+    // Stop video tracks
     const video = document.getElementById('barcodeVideo');
-    if (video && video.srcObject) {
-      video.srcObject.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
+    if (video) {
+      // Pause the video
+      try {
+        video.pause();
+        video.currentTime = 0;
+      } catch (pauseError) {
+        console.log('⚠️ Video pause error (normal):', pauseError.message);
+      }
+      
+      // Stop all tracks
+      if (video.srcObject) {
+        try {
+          const tracks = video.srcObject.getTracks();
+          tracks.forEach(track => {
+            if (track && typeof track.stop === 'function') {
+              track.stop();
+            }
+          });
+          video.srcObject = null;
+          console.log('✅ Video tracks stopped');
+        } catch (trackError) {
+          console.log('⚠️ Track stop error (normal):', trackError.message);
+        }
+      }
+      
+      // Clear the video source
+      video.src = '';
+      video.load();
     }
+    
     activeVideoElement = null;
+    isCameraActive = false;
+    cameraStream = null;
+    console.log('✅ Camera scanner stopped successfully');
+    
   } catch (e) {
-    console.warn('Error stopping camera:', e);
+    console.warn('⚠️ Error stopping camera:', e);
   }
 }
 
