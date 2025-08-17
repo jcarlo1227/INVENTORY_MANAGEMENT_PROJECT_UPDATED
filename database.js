@@ -283,6 +283,24 @@ const testConnection = async () => {
         is_read BOOLEAN DEFAULT false
       )
     `;
+    // Standardize notifications schema: ensure is_read exists (handle legacy "read" column)
+    try {
+      const cols = await connection`
+        SELECT LOWER(column_name) AS name
+        FROM information_schema.columns
+        WHERE table_name = 'notifications'
+      `;
+      const names = (cols || []).map(c => String(c.name));
+      const hasIsRead = names.includes('is_read');
+      const hasRead = names.includes('read');
+      if (!hasIsRead && hasRead) {
+        await connection(`ALTER TABLE notifications RENAME COLUMN "read" TO is_read`);
+      } else if (!hasIsRead && !hasRead) {
+        await connection`ALTER TABLE notifications ADD COLUMN is_read BOOLEAN DEFAULT false`;
+      }
+    } catch (e) {
+      console.warn('⚠️ Notifications schema standardization skipped:', e?.message);
+    }
     
     // Create scan history table if it doesn't exist
     await connection`
