@@ -1397,6 +1397,7 @@ function showMessage(message, type = 'info') {
 }
 
 function startBarcodeScanner() {
+  console.log('🚀 Starting barcode scanner...');
   scannerMode = 'barcode';
   startScanning();
   startCameraBarcodeScanner();
@@ -2642,6 +2643,10 @@ function filterBarcodeItems() {
 }
 
 async function startCameraBarcodeScanner() {
+  console.log('📹 Starting camera barcode scanner...');
+  console.log('🔍 Scanner mode:', scannerMode);
+  console.log('🔍 Is scanning:', isScanning);
+  
   try {
     if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
       console.warn('ZXing not loaded; skipping camera scanner');
@@ -2662,6 +2667,7 @@ async function startCameraBarcodeScanner() {
     }
 
     // Check camera permissions and get initial stream
+    console.log('🔐 Requesting camera permissions...');
     let testStream = null;
     try {
       testStream = await navigator.mediaDevices.getUserMedia({ 
@@ -2672,6 +2678,12 @@ async function startCameraBarcodeScanner() {
         } 
       });
       console.log('✅ Camera permissions granted and test stream created');
+      console.log('📊 Test stream tracks:', testStream.getTracks().map(t => ({
+        kind: t.kind,
+        label: t.label,
+        enabled: t.enabled,
+        readyState: t.readyState
+      })));
     } catch (permissionError) {
       console.error('❌ Camera permission error:', permissionError);
       if (permissionError.name === 'NotAllowedError') {
@@ -2694,7 +2706,17 @@ async function startCameraBarcodeScanner() {
     }
 
     const video = document.getElementById('barcodeVideo');
-    if (!video) return;
+    if (!video) {
+      console.error('❌ Video element not found');
+      return;
+    }
+    console.log('📹 Video element found:', video);
+    console.log('📹 Video element state:', {
+      readyState: video.readyState,
+      networkState: video.networkState,
+      srcObject: !!video.srcObject,
+      error: !!video.error
+    });
 
     // Stop any existing video streams first
     if (video.srcObject) {
@@ -2704,6 +2726,7 @@ async function startCameraBarcodeScanner() {
     }
 
     // Reset video element safely
+    console.log('🧹 Resetting video element...');
     try {
       video.pause();
       video.currentTime = 0;
@@ -2721,6 +2744,7 @@ async function startCameraBarcodeScanner() {
       
       // Wait a bit for video element to reset
       await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('✅ Video element reset complete');
       
     } catch (resetError) {
       console.warn('⚠️ Video reset error (non-critical):', resetError);
@@ -2728,21 +2752,26 @@ async function startCameraBarcodeScanner() {
     }
 
     // Create new code reader instance if needed
+    console.log('🔍 Setting up code reader...');
     if (!codeReader) {
       codeReader = new ZXing.BrowserMultiFormatReader();
+      console.log('✅ New code reader instance created');
     } else {
       // Reset existing code reader
       try {
         codeReader.reset();
+        console.log('✅ Existing code reader reset');
       } catch (resetError) {
-        console.log('Code reader reset error (normal):', resetError.message);
+        console.log('⚠️ Code reader reset error (normal):', resetError.message);
       }
     }
 
     // Prefer environment (rear) camera
+    console.log('🔍 Enumerating video input devices...');
     codeReader
       .listVideoInputDevices()
       .then(videoInputDevices => {
+        console.log('📱 Video input devices enumeration result:', videoInputDevices);
         if (!videoInputDevices || videoInputDevices.length === 0) {
           console.warn('⚠️ No video input devices found, will use facing mode');
           // Don't throw error, continue with facing mode
@@ -2807,6 +2836,7 @@ async function startCameraBarcodeScanner() {
         updateStatus('scanning', 'Starting camera...');
         
         // Create video stream and start decoding
+        console.log('🎥 Calling createVideoStream with constraints:', videoConstraints);
         createVideoStream(videoConstraints, video, testStream);
       })
       .catch(err => {
@@ -2879,6 +2909,12 @@ async function startCameraBarcodeScanner() {
 }
 
 async function createVideoStream(videoConstraints, video, testStream) {
+  console.log('🎥 createVideoStream called with:', {
+    videoConstraints,
+    video: !!video,
+    testStream: !!testStream
+  });
+  
   // Validate video element
   if (!video || !(video instanceof HTMLVideoElement)) {
     console.error('❌ Invalid video element provided');
@@ -2887,19 +2923,30 @@ async function createVideoStream(videoConstraints, video, testStream) {
   
   // Stop the test stream and create a new one for the video element
   if (testStream) {
+    console.log('🛑 Stopping test stream...');
     testStream.getTracks().forEach(track => track.stop());
+    console.log('✅ Test stream stopped');
   }
 
-  // Create a new stream for the video element
-  try {
-    console.log('🎥 Creating video stream with constraints:', videoConstraints);
+      // Create a new stream for the video element
+    try {
+      console.log('🎥 Creating video stream with constraints:', videoConstraints);
 
-    const videoStream = await navigator.mediaDevices.getUserMedia({
-      video: videoConstraints
-    });
+      const videoStream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraints
+      });
+      
+      console.log('✅ Video stream created successfully');
+      console.log('📊 Video stream details:', {
+        tracks: videoStream.getTracks().length,
+        videoTracks: videoStream.getVideoTracks().length,
+        audioTracks: videoStream.getAudioTracks().length
+      });
 
     // Set the stream to the video element safely
     try {
+      console.log('🔧 Setting video stream to video element...');
+      
       // Ensure video element is in a clean state
       if (video.error) {
         console.log('🧹 Video had previous error, clearing...');
@@ -2910,6 +2957,13 @@ async function createVideoStream(videoConstraints, video, testStream) {
       cameraStream = videoStream;
       activeVideoElement = video;
       isCameraActive = true;
+      
+      console.log('✅ Video properties set:', {
+        srcObject: !!video.srcObject,
+        cameraStream: !!cameraStream,
+        activeVideoElement: !!activeVideoElement,
+        isCameraActive: isCameraActive
+      });
       
       // Update camera status
       updateCameraStatus('Active', `Resolution: ${videoStream.getVideoTracks()[0]?.getSettings()?.width || 'Unknown'}x${videoStream.getVideoTracks()[0]?.getSettings()?.height || 'Unknown'}`);
@@ -2955,13 +3009,22 @@ async function createVideoStream(videoConstraints, video, testStream) {
       video.style.display = 'block';
       video.style.minHeight = '200px';
       
+      console.log('🔧 Video element styling applied:', {
+        display: video.style.display,
+        minHeight: video.style.minHeight,
+        width: video.style.width,
+        height: video.style.height
+      });
+      
       // Remove any placeholder
       const placeholder = document.querySelector('#videoPlaceholder');
       if (placeholder) {
         placeholder.remove();
+        console.log('✅ Video placeholder removed');
       }
       
       // Start the decoder
+      console.log('🚀 Starting barcode decoder...');
       startBarcodeDecoder(video);
     }
     
@@ -3136,23 +3199,38 @@ async function createVideoStream(videoConstraints, video, testStream) {
 }
 
 function startBarcodeDecoder(video) {
-  if (!codeReader || !isScanning) return;
+  console.log('🔍 startBarcodeDecoder called with:', {
+    codeReader: !!codeReader,
+    isScanning: isScanning,
+    video: !!video
+  });
+  
+  if (!codeReader || !isScanning) {
+    console.warn('⚠️ Cannot start decoder:', {
+      codeReader: !!codeReader,
+      isScanning: isScanning
+    });
+    return;
+  }
   
   try {
+    console.log('🎯 Starting barcode decoder with video element...');
     // Start the decoder
     codeReader.decodeFromVideoDevice(null, video, (result, err, controls) => {
       if (!isScanning) {
+        console.log('🛑 Scanner stopped, stopping decoder...');
         try { 
           if (controls && typeof controls.stop === 'function') {
             controls.stop(); 
           }
         } catch (stopError) {
-          console.log('Controls stop error (normal):', stopError.message);
+          console.log('⚠️ Controls stop error (normal):', stopError.message);
         }
         return;
       }
       
       if (result) {
+        console.log('🎯 Barcode detected:', result.getText ? result.getText() : (result.text || '').toString());
         const now = Date.now();
         const text = result.getText ? result.getText() : (result.text || '').toString();
         // Throttle duplicate scans within 1.5s
@@ -3164,6 +3242,10 @@ function startBarcodeDecoder(video) {
             stopScanning();
           }
         }
+      }
+      
+      if (err) {
+        console.log('⚠️ Decoder error (normal during scanning):', err);
       }
     });
     
