@@ -1394,11 +1394,12 @@ function updateScanHistory() {
               ${statusIcon}
               <strong class="ms-2">${scan.code}</strong>
               ${scan.item ? `<span class="badge bg-info ms-2">${scan.item.productName}</span>` : ''}
+              ${scan.item ? `<span class="badge ${scan.item.status === 'active' ? 'bg-success' : scan.item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'} ms-2">${scan.item.status}</span>` : ''}
             </div>
             <small class="text-muted">
               <i class="bi bi-${scan.type === 'barcode' ? 'upc-scan' : 'broadcast'}"></i>
               ${scan.type.toUpperCase()} • ${scan.timestamp.toLocaleString()}
-              ${scan.item ? ` • Qty: ${scan.item.totalQuantity}` : ''}
+              ${scan.item ? ` • Qty: ${scan.item.totalQuantity} • Status: ${scan.item.status}` : ''}
             </small>
           </div>
           <div>
@@ -1486,7 +1487,7 @@ function showItemDetails(item) {
         <div class="col-md-6">
           <strong>Item Code:</strong> ${item.itemCode}<br>
           <strong>Product Name:</strong> ${item.productName}<br>
-          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : 'bg-danger'}">${item.status}</span>
+          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'}">${item.status}</span>
         </div>
         <div class="col-md-6">
           <strong>Current Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}<br>
@@ -1517,6 +1518,7 @@ function showItemDetails(item) {
         <button class="btn btn-sm btn-warning" onclick="setQuickQuantity(10)">+10</button>
         <button class="btn btn-sm btn-info" onclick="setQuickQuantity(50)">+50</button>
         <button class="btn btn-sm btn-primary" onclick="setQuickQuantity(100)">+100</button>
+        ${item.status === 'out of stock' ? `<button class="btn btn-sm btn-success" onclick="restockItem()">Restock Item</button>` : ''}
       </div>
       
       <div class="barcode-section mt-3">
@@ -1574,6 +1576,25 @@ function setQuickQuantity(value) {
   }
 }
 
+function restockItem() {
+  if (!currentItem) return;
+  
+  // Set a reasonable restock quantity (you can adjust this logic)
+  let restockQuantity = 50; // Default restock amount
+  
+  // If the item had a previous quantity, use that as a reference
+  if (currentItem.totalQuantity > 0) {
+    restockQuantity = Math.max(50, Math.ceil(currentItem.totalQuantity * 0.5));
+  }
+  
+  // Set the quantity input
+  const input = document.getElementById('newQuantity');
+  input.value = restockQuantity;
+  
+  // Show a message about the restock
+  showMessage(`Restock quantity set to ${restockQuantity} for ${currentItem.productName}`, 'info');
+}
+
 async function updateInventoryQuantity() {
   if (!currentItem) return;
   
@@ -1583,23 +1604,62 @@ async function updateInventoryQuantity() {
     return;
   }
   
+  // Determine new status based on quantity and current status
+  let newStatus = currentItem.status;
+  
+  // If current status is 'out of stock' and new quantity > 0, change to 'active'
+  if (currentItem.status === 'out of stock' && newQuantity > 0) {
+    newStatus = 'active';
+  }
+  // If new quantity is 0, change status to 'out of stock'
+  else if (newQuantity === 0) {
+    newStatus = 'out of stock';
+  }
+  
+  // Show confirmation if status will change
+  if (newStatus !== currentItem.status) {
+    const statusChangeMessage = newStatus === 'active' 
+      ? `This will change the status from 'out of stock' to 'active' for ${currentItem.productName}.`
+      : `This will change the status to 'out of stock' for ${currentItem.productName}.`;
+    
+    if (!confirm(`${statusChangeMessage}\n\nDo you want to continue?`)) {
+      return;
+    }
+  }
+  
   try {
+    const updateData = {
+      total_quantity: newQuantity
+    };
+    
+    // Only include status update if it's changing
+    if (newStatus !== currentItem.status) {
+      updateData.status = newStatus;
+    }
+    
     const response = await apiCall(`/inventory/${currentItem.id}`, {
       method: 'PUT',
-      body: JSON.stringify({
-        total_quantity: newQuantity
-      })
+      body: JSON.stringify(updateData)
     });
     
     if (response.success) {
       // Update local data
       currentItem.totalQuantity = newQuantity;
+      currentItem.status = newStatus;
+      
       const index = inventoryData.findIndex(item => item.id === currentItem.id);
       if (index !== -1) {
         inventoryData[index].totalQuantity = newQuantity;
+        inventoryData[index].status = newStatus;
       }
       
-      showMessage(`Quantity updated successfully for ${currentItem.productName}`, 'success');
+      // Show appropriate message based on what was updated
+      let message = `Quantity updated successfully for ${currentItem.productName}`;
+      if (newStatus !== currentItem.status) {
+        message += `. Status changed from '${currentItem.status}' to '${newStatus}'`;
+      }
+      
+      showMessage(message, 'success');
       bootstrap.Modal.getInstance(document.getElementById('itemLookupModal')).hide();
       
       // Log activity
@@ -1607,6 +1667,21 @@ async function updateInventoryQuantity() {
       
       // Refresh notifications
       refreshNotifications();
+      
+      // Update the item details display to reflect the new status
+      if (newStatus !== currentItem.status) {
+        // Update the status badge in the modal if it's still open
+        const statusBadge = document.querySelector('#itemDetailsContent .badge');
+        if (statusBadge) {
+          statusBadge.className = `badge ${newStatus === 'active' ? 'bg-success' : newStatus === 'out of stock' ? 'bg-danger' : 'bg-warning'}`;
+          statusBadge.textContent = newStatus;
+        }
+      }
+      
+      // Refresh inventory data to ensure consistency
+      setTimeout(() => {
+        loadInventoryData();
+      }, 1000);
     } else {
       showMessage(response.message || 'Failed to update quantity', 'error');
     }
@@ -2169,7 +2244,8 @@ function populateBarcodeItems() {
           <strong>Code:</strong> ${item.itemCode}<br>
           <strong>Category:</strong> ${category?.category_name || 'N/A'}<br>
           <strong>Warehouse:</strong> ${warehouse?.warehouse_name || 'N/A'}<br>
-          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}
+          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}<br>
+          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'}">${item.status}</span>
         </div>
         
         <div class="barcode-preview" id="barcode-preview-${item.id}">
@@ -2248,7 +2324,8 @@ function filterBarcodeItems() {
           <strong>Code:</strong> ${item.itemCode}<br>
           <strong>Category:</strong> ${category?.category_name || 'N/A'}<br>
           <strong>Warehouse:</strong> ${warehouse?.warehouse_name || 'N/A'}<br>
-          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}
+          <strong>Quantity:</strong> ${item.totalQuantity} ${item.unitOfMeasure}<br>
+          <strong>Status:</strong> <span class="badge ${item.status === 'active' ? 'bg-success' : item.status === 'out of stock' ? 'bg-danger' : 'bg-warning'}">${item.status}</span>
         </div>
         
         <div class="barcode-preview" id="barcode-preview-${item.id}">
