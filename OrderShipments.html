@@ -882,7 +882,7 @@
       const row = document.createElement('tr');
       row.innerHTML = `
         <td><strong>${o.order_id}</strong></td>
-        <td>${o.customer_id || '-'}</td>
+        <td>${o.customer_id || o.pp_customer_id || '-'}</td>
         <td>${o.product_name || '-'}</td>
         <td>${o.quantity || 0}</td>
         <td><span class="status-badge status-${(o.status || 'processing').toLowerCase()}">${(o.status || 'processing').toUpperCase()}</span></td>

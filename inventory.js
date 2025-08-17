@@ -992,8 +992,10 @@ const getAllOrderShipments = async (filters = {}) => {
 
     let queryText = `
       SELECT 
-        os.*
+        os.*,
+        pp.customer_id AS pp_customer_id
       FROM order_shipments os
+      LEFT JOIN production_planning pp ON os.order_id::text = pp.order_id::text
     `;
 
     const conditions = [];
@@ -1036,8 +1038,10 @@ const getOrderShipmentById = async (id) => {
     const sql = await database.sql();
     const result = await sql`
       SELECT 
-        os.*
+        os.*,
+        pp.customer_id AS pp_customer_id
       FROM order_shipments os
+      LEFT JOIN production_planning pp ON os.order_id::text = pp.order_id::text
       WHERE os.id = ${id}
     `;
     return result[0] || null;
