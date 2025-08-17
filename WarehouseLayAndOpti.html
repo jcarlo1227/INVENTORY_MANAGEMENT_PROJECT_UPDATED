@@ -1492,7 +1492,7 @@
   let realTimeInterval = null;
   let overviewInterval = null;
   let lastUpdateTime = null;
-  let isRealTimeEnabled = true;
+  let isRealTimeEnabled = false;
   
   // Real-time configuration
   const REAL_TIME_CONFIG = {
@@ -1502,7 +1502,7 @@
     recommendations: 90000, // 1.5 minutes
     notifications: 15000,   // 15 seconds
     inventory: 60000,    // 1 minute
-    orderShipments: 30000, // 30 seconds
+    orderShipments: 120000, // 2 minutes
     scanHistory: 45000   // 45 seconds
   };
   
@@ -1806,7 +1806,7 @@
       if (isRealTimeEnabled) {
         refreshOverviewData();
       }
-    }, 5000); // Refresh overview every 5 seconds
+    }, 15000); // Refresh overview every 15 seconds
     
     console.log('Real-time updates started');
   }
@@ -1867,12 +1867,8 @@
   // Refresh overview data for real-time display
   async function refreshOverviewData() {
     try {
-      // Only refresh overview sections, not full data loads
-      await Promise.all([
-        loadInventoryOverview(),
-        loadOrderShipmentStats(),
-        loadScanHistory()
-      ]);
+      // Only refresh minimal shipment statistics to reduce load
+      await loadOrderShipmentStats();
       
       // Update timestamp for overview refresh
       const overviewUpdateTime = new Date();
@@ -2397,7 +2393,7 @@
     }
   }
   
-  // Load order shipment statistics from database with enhanced data
+   // Load order shipment statistics from database with enhanced data
   async function loadOrderShipmentStats() {
     try {
       // Fetch order shipments data
@@ -2430,7 +2426,7 @@
         oneDayAgo.setDate(oneDayAgo.getDate() - 1);
         const delayedShipments = shipments.filter(shipment => {
           const shipmentDate = new Date(shipment.updated_at || shipment.created_at);
-          return shipment.status === 'shipped' && shipmentDate <= oneDayAgo;
+          return shipment.status === 'shipped' && shipmentDate >= oneDayAgo;
         }).length;
         
         const combinedData = {
