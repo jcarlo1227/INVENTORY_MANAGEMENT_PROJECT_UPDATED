@@ -1246,7 +1246,7 @@ const getOrderShipmentStats = async () => {
     const total = await sql`SELECT COUNT(*) as count FROM order_shipments`;
     const delivered = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'delivered'`;
     const shipped = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'shipped'`;
-    const processing = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'processing'`;
+    const processing = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'processed'`;
     const delayed = await sql`
       SELECT COUNT(*) as count
       FROM order_shipments
