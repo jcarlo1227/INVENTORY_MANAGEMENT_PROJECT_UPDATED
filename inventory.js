@@ -220,40 +220,41 @@ const initializeOrderShipmentsTable = async () => {
     await sql`
       CREATE TABLE IF NOT EXISTS production_planning (
         plan_id SERIAL PRIMARY KEY,
-        order_id INTEGER UNIQUE,
-        product_id INTEGER,
+        order_id INT UNIQUE,
+        customer_id INT,
+        product_id INT,
         product_name VARCHAR(255),
         work_order_id SERIAL UNIQUE,
         planned_date DATE,
-        shipping_date DATE,
         status VARCHAR(50),
-        quantity INTEGER
+        quantity INT
       )
     `;
-    
-    // Ensure shipping_date column exists (migration for existing databases)
-    await sql`ALTER TABLE production_planning ADD COLUMN IF NOT EXISTS shipping_date DATE`;
 
     const createPPTriggerFunction = `
       CREATE OR REPLACE FUNCTION insert_pp_after_orders_insert()
       RETURNS TRIGGER AS $$
       BEGIN
-          INSERT INTO production_planning (
-              order_id, 
-              product_id, 
-              product_name, 
-              planned_date, 
-              status, 
-              quantity
-          )
-          VALUES (
-              NEW.order_id,
-              NEW.product_id,
-              (SELECT product_name FROM products WHERE product_id = NEW.product_id),
-              NEW.order_date,
-              NEW.order_status,
-              NEW.quantity
-          );
+          IF NEW.payment_status = 'paid' THEN
+              INSERT INTO production_planning (
+                  order_id,
+                  customer_id,
+                  product_id,
+                  product_name,
+                  planned_date,
+                  status,
+                  quantity
+              )
+              VALUES (
+                  NEW.order_id,
+                  NEW.customer_id,
+                  NEW.product_id,
+                  (SELECT product_name FROM products WHERE product_id = NEW.product_id),
+                  NEW.order_date,
+                  'processing',
+                  NEW.quantity
+              );
+          END IF;
 
           RETURN NEW;
       END;
