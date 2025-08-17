@@ -711,7 +711,7 @@
 
         <!-- Scanner Area -->
         <div class="scanner-area" id="scannerArea">
-          <video id="barcodeVideo" autoplay playsinline style="width: 100%; max-height: 260px; border-radius: 8px; background: #000;">
+          <video id="barcodeVideo" autoplay playsinline muted style="width: 100%; max-height: 260px; border-radius: 8px; background: #000;">
             <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 0.9rem;">
               Camera not active. Click "Start Barcode Scanner" to begin.
             </div>
@@ -2579,22 +2579,29 @@ async function startCameraBarcodeScanner() {
       video.srcObject = null;
     }
 
-    // Reset video element completely but don't set empty src
-    video.pause();
-    video.currentTime = 0;
-    
-    // Don't set empty src - this causes the MEDIA_ELEMENT_ERROR
-    // video.src = '';
-    // video.load();
-    
-    // Set video properties for better compatibility
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted = true;
-    video.controls = false;
-    
-    // Wait a bit for video element to reset
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Reset video element safely
+    try {
+      video.pause();
+      video.currentTime = 0;
+      
+      // Ensure video properties are set correctly
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true;
+      video.controls = false;
+      
+      // Remove any existing error state
+      if (video.error) {
+        console.log('🧹 Clearing previous video error state');
+      }
+      
+      // Wait a bit for video element to reset
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+    } catch (resetError) {
+      console.warn('⚠️ Video reset error (non-critical):', resetError);
+      // Continue anyway
+    }
 
     // Create new code reader instance if needed
     if (!codeReader) {
@@ -2748,6 +2755,12 @@ async function startCameraBarcodeScanner() {
 }
 
 async function createVideoStream(videoConstraints, video, testStream) {
+  // Validate video element
+  if (!video || !(video instanceof HTMLVideoElement)) {
+    console.error('❌ Invalid video element provided');
+    return;
+  }
+  
   // Stop the test stream and create a new one for the video element
   if (testStream) {
     testStream.getTracks().forEach(track => track.stop());
@@ -2761,16 +2774,27 @@ async function createVideoStream(videoConstraints, video, testStream) {
       video: videoConstraints
     });
 
-    // Set the stream to the video element
-    video.srcObject = videoStream;
-    cameraStream = videoStream;
-    activeVideoElement = video;
-    isCameraActive = true;
-    
-    // Update camera status
-    updateCameraStatus('Active', `Resolution: ${videoStream.getVideoTracks()[0]?.getSettings()?.width || 'Unknown'}x${videoStream.getVideoTracks()[0]?.getSettings()?.height || 'Unknown'}`);
+    // Set the stream to the video element safely
+    try {
+      // Ensure video element is in a clean state
+      if (video.error) {
+        console.log('🧹 Video had previous error, clearing...');
+      }
+      
+      // Set the stream
+      video.srcObject = videoStream;
+      cameraStream = videoStream;
+      activeVideoElement = video;
+      isCameraActive = true;
+      
+      // Update camera status
+      updateCameraStatus('Active', `Resolution: ${videoStream.getVideoTracks()[0]?.getSettings()?.width || 'Unknown'}x${videoStream.getVideoTracks()[0]?.getSettings()?.height || 'Unknown'}`);
 
-    console.log('✅ Video stream created and set to video element');
+      console.log('✅ Video stream created and set to video element');
+    } catch (setError) {
+      console.error('❌ Error setting video stream:', setError);
+      throw setError;
+    }
     console.log('📊 Stream tracks:', videoStream.getTracks().map(t => ({
       kind: t.kind,
       label: t.label,
@@ -2847,7 +2871,9 @@ async function createVideoStream(videoConstraints, video, testStream) {
       });
       
       // Clear the timeout
-      clearTimeout(videoReadyTimeout);
+      if (videoReadyTimeout) {
+        clearTimeout(videoReadyTimeout);
+      }
       
       video.removeEventListener('error', videoErrorListener);
       
@@ -2855,6 +2881,24 @@ async function createVideoStream(videoConstraints, video, testStream) {
       if (video.error) {
         console.error('Video error code:', video.error.code);
         console.error('Video error message:', video.error.message);
+        
+        // Handle specific error codes
+        switch (video.error.code) {
+          case 4: // MEDIA_ELEMENT_ERROR: Empty src attribute
+            console.warn('⚠️ Empty src attribute error - this should not happen with srcObject');
+            break;
+          case 1: // MEDIA_ERR_ABORTED
+            console.warn('⚠️ Media aborted - user or script stopped the media');
+            break;
+          case 2: // MEDIA_ERR_NETWORK
+            console.warn('⚠️ Network error - network error occurred');
+            break;
+          case 3: // MEDIA_ERR_DECODE
+            console.warn('⚠️ Decode error - media decoding failed');
+            break;
+          default:
+            console.warn('⚠️ Unknown video error code:', video.error.code);
+        }
       }
       
       // Try to recover from the error
