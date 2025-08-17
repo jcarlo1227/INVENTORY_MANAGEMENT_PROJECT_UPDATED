@@ -492,6 +492,44 @@
       gap: 0.5rem;
       flex-wrap: wrap;
     }
+    
+    /* Camera status and retry button styles */
+    .manual-retry-btn {
+      background-color: var(--warning-color);
+      border-color: var(--warning-color);
+      color: white;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .manual-retry-btn:hover {
+      background-color: #e68900;
+      border-color: #e68900;
+      transform: translateY(-1px);
+    }
+    
+    .camera-status-info {
+      font-size: 0.8rem;
+      color: var(--sub-header);
+    }
+    
+    /* Video element improvements */
+    #barcodeVideo {
+      background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                  linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                  linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                  linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    
+    #barcodeVideo:not([srcObject]) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--sub-header);
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
@@ -653,6 +691,12 @@
         <div class="mb-3">
           <span class="status-indicator status-ready" id="statusIndicator"></span>
           <span id="statusText">Ready to scan</span>
+          <div class="mt-1">
+            <small class="text-muted">
+              <span id="cameraStatus">Camera: Not active</span>
+              <span id="cameraInfo" class="ms-3" style="display: none;"></span>
+            </small>
+          </div>
         </div>
 
         <!-- Scanner Controls -->
@@ -660,15 +704,23 @@
           <button class="btn btn-outline-success" onclick="continuousScan()" id="continuousBtn">
             <i class="bi bi-arrow-repeat"></i> Continuous Scan
           </button>
+          <button class="btn btn-outline-info btn-sm" onclick="debugCameraState()" title="Debug camera state">
+            <i class="bi bi-bug"></i> Debug
+          </button>
         </div>
 
         <!-- Scanner Area -->
         <div class="scanner-area" id="scannerArea">
-          <video id="barcodeVideo" autoplay playsinline style="width: 100%; max-height: 260px; border-radius: 8px; background: #000;"></video>
+          <video id="barcodeVideo" autoplay playsinline style="width: 100%; max-height: 260px; border-radius: 8px; background: #000;">
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 0.9rem;">
+              Camera not active. Click "Start Barcode Scanner" to begin.
+            </div>
+          </video>
           <div class="mt-2">
             <h6>Point camera at barcode</h6>
             <p class="text-muted">Or manually enter code below</p>
           </div>
+          <!-- Manual retry button will be added here dynamically -->
         </div>
 
         <!-- Manual Input -->
@@ -927,6 +979,18 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.20.0"></script>
 <script>
+// Check if ZXing library loaded successfully
+window.addEventListener('load', function() {
+  setTimeout(() => {
+    if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
+      console.error('❌ ZXing library failed to load');
+      showMessage('Barcode scanning library failed to load. Please check your internet connection and refresh the page.', 'error');
+      updateCameraStatus('Library failed to load');
+    } else {
+      console.log('✅ ZXing library loaded successfully');
+    }
+  }, 2000); // Wait 2 seconds for library to load
+});
 // Global variables
 let scanHistory = [];
 let inventoryData = [];
@@ -944,6 +1008,8 @@ let codeReader = null;
 let activeVideoElement = null;
 let lastScannedAt = 0;
 let lastScannedCode = '';
+let cameraStream = null;
+let isCameraActive = false;
 
 // API Helper Functions
 const API_BASE = '/api';
@@ -977,7 +1043,143 @@ document.addEventListener('DOMContentLoaded', function() {
   loadNotificationCount();
   updateScanCount();
   focusInput();
+  
+  // Initialize video placeholder
+  initializeVideoPlaceholder();
+  
+  // Check camera availability
+  checkCameraAvailability().then(result => {
+    if (!result.available) {
+      console.warn('⚠️ Camera not available:', result.reason);
+      updateCameraStatus('Not available', result.reason);
+    }
+  });
 });
+
+function initializeVideoPlaceholder() {
+  const video = document.getElementById('barcodeVideo');
+  if (video) {
+    // Add a placeholder overlay when video is not active
+    const placeholder = document.createElement('div');
+    placeholder.id = 'videoPlaceholder';
+    placeholder.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 0.9rem;
+      text-align: center;
+      border-radius: 8px;
+      z-index: 1;
+    `;
+    placeholder.innerHTML = `
+      <div>
+        <i class="bi bi-camera" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>
+        Camera not active<br>
+        <small>Click "Start Barcode Scanner" to begin</small>
+      </div>
+    `;
+    
+    // Make video container relative positioned
+    video.style.position = 'relative';
+    video.appendChild(placeholder);
+    
+    // Remove placeholder when video becomes active
+    video.addEventListener('loadedmetadata', function() {
+      if (placeholder.parentNode) {
+        placeholder.remove();
+      }
+    });
+  }
+}
+
+function showVideoPlaceholder() {
+  const video = document.getElementById('barcodeVideo');
+  if (video && !video.querySelector('#videoPlaceholder')) {
+    const placeholder = document.createElement('div');
+    placeholder.id = 'videoPlaceholder';
+    placeholder.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 0.9rem;
+      text-align: center;
+      border-radius: 8px;
+      z-index: 1;
+    `;
+    placeholder.innerHTML = `
+      <div>
+        <i class="bi bi-camera" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>
+        Camera not active<br>
+        <small>Click "Start Barcode Scanner" to begin</small>
+      </div>
+    `;
+    
+    video.appendChild(placeholder);
+  }
+}
+
+async function checkCameraAvailability() {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('⚠️ Media devices API not supported');
+      return { available: false, reason: 'Media devices API not supported' };
+    }
+    
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    
+    if (videoDevices.length === 0) {
+      console.warn('⚠️ No video input devices found');
+      return { available: false, reason: 'No video input devices found' };
+    }
+    
+    console.log('📱 Found video devices:', videoDevices.map(d => ({
+      deviceId: d.deviceId,
+      label: d.label,
+      groupId: d.groupId
+    })));
+    
+    return { available: true, devices: videoDevices };
+  } catch (error) {
+    console.error('❌ Error checking camera availability:', error);
+    return { available: false, reason: error.message };
+  }
+}
+
+function debugCameraState() {
+  console.log('🔍 Camera Debug Information:');
+  console.log('📱 Navigator media devices:', !!navigator.mediaDevices);
+  console.log('📱 getUserMedia support:', !!navigator.mediaDevices?.getUserMedia);
+  console.log('📱 enumerateDevices support:', !!navigator.mediaDevices?.enumerateDevices);
+  console.log('📹 Video element:', document.getElementById('barcodeVideo'));
+  console.log('📹 Video srcObject:', document.getElementById('barcodeVideo')?.srcObject);
+  console.log('📹 Video readyState:', document.getElementById('barcodeVideo')?.readyState);
+  console.log('📹 Video networkState:', document.getElementById('barcodeVideo')?.networkState);
+  console.log('📹 Video error:', document.getElementById('barcodeVideo')?.error);
+  console.log('🔍 ZXing library:', !!window.ZXing);
+  console.log('🔍 BrowserMultiFormatReader:', !!window.ZXing?.BrowserMultiFormatReader);
+  console.log('🔍 Code reader instance:', !!codeReader);
+  console.log('🔍 Camera active:', isCameraActive);
+  console.log('🔍 Camera stream:', !!cameraStream);
+  console.log('🔍 Active video element:', !!activeVideoElement);
+  console.log('🔍 Is scanning:', isScanning);
+  console.log('🔍 Scanner mode:', scannerMode);
+  console.log('🔍 Continuous mode:', continuousMode);
+}
 
 // Load initial data from database
 async function loadInitialData() {
@@ -1072,9 +1274,19 @@ function showMessage(message, type = 'info') {
 
 function startBarcodeScanner() {
   scannerMode = 'barcode';
-  updateScannerMode();
   startScanning();
   startCameraBarcodeScanner();
+}
+
+function updateScannerMode() {
+  // Update UI to reflect current scanner mode
+  const scannerArea = document.getElementById('scannerArea');
+  if (scannerArea) {
+    scannerArea.classList.remove('active');
+    if (isScanning) {
+      scannerArea.classList.add('active');
+    }
+  }
 }
 
 
@@ -1425,6 +1637,24 @@ function updateStatus(status, message) {
   
   indicator.className = `status-indicator status-${status}`;
   text.textContent = message;
+}
+
+function updateCameraStatus(status, info = '') {
+  const cameraStatus = document.getElementById('cameraStatus');
+  const cameraInfo = document.getElementById('cameraInfo');
+  
+  if (cameraStatus) {
+    cameraStatus.textContent = `Camera: ${status}`;
+  }
+  
+  if (cameraInfo) {
+    if (info) {
+      cameraInfo.textContent = info;
+      cameraInfo.style.display = 'inline';
+    } else {
+      cameraInfo.style.display = 'none';
+    }
+  }
 }
 
 function filterHistory(type) {
@@ -1785,6 +2015,22 @@ function playBeep() {
 document.addEventListener('visibilitychange', function() {
   if (!document.hidden) {
     focusInput();
+  }
+});
+
+// Cleanup camera when page is unloaded
+window.addEventListener('beforeunload', function() {
+  if (isCameraActive) {
+    console.log('🧹 Cleaning up camera before page unload...');
+    stopCameraBarcodeScanner();
+  }
+});
+
+// Cleanup camera when page loses focus
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && isCameraActive) {
+    console.log('👁️ Page hidden, stopping camera...');
+    stopCameraBarcodeScanner();
   }
 });
 
@@ -2271,70 +2517,515 @@ function filterBarcodeItems() {
   }).join('');
 }
 
-function startCameraBarcodeScanner() {
+async function startCameraBarcodeScanner() {
   try {
     if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
       console.warn('ZXing not loaded; skipping camera scanner');
+      showMessage('Barcode scanning library not loaded. Please refresh the page and try again.', 'error');
+      updateStatus('error', 'ZXing library not available');
+      updateCameraStatus('Library not loaded');
       return;
     }
     if (scannerMode !== 'barcode') return;
 
+    // Check if camera is already active
+    if (isCameraActive) {
+      console.log('⚠️ Camera is already active, stopping previous session...');
+      stopCameraBarcodeScanner();
+      // Wait a bit for cleanup
+      setTimeout(() => startCameraBarcodeScanner(), 500);
+      return;
+    }
+
+    // Check camera permissions and get initial stream
+    let testStream = null;
+    try {
+      testStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'environment' // Prefer rear camera
+        } 
+      });
+      console.log('✅ Camera permissions granted and test stream created');
+    } catch (permissionError) {
+      console.error('❌ Camera permission error:', permissionError);
+      if (permissionError.name === 'NotAllowedError') {
+        showMessage('Camera access denied. Please allow camera permissions in your browser.', 'error');
+        updateStatus('error', 'Camera permission denied');
+        updateCameraStatus('Permission denied');
+        return;
+      } else if (permissionError.name === 'NotFoundError') {
+        showMessage('No camera found on this device.', 'warning');
+        updateStatus('error', 'No camera found');
+        updateCameraStatus('Not found');
+        return;
+      } else if (permissionError.name === 'NotReadableError') {
+        showMessage('Camera is already in use by another application.', 'warning');
+        updateStatus('error', 'Camera in use');
+        updateCameraStatus('In use by another app');
+        return;
+      }
+      throw permissionError;
+    }
+
     const video = document.getElementById('barcodeVideo');
     if (!video) return;
 
+    // Stop any existing video streams first
+    if (video.srcObject) {
+      const tracks = video.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      video.srcObject = null;
+    }
+
+    // Reset video element completely
+    video.pause();
+    video.currentTime = 0;
+    video.src = '';
+    video.load();
+    
+    // Set video properties for better compatibility
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+    video.controls = false;
+    
+    // Wait a bit for video element to reset
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Create new code reader instance if needed
     if (!codeReader) {
       codeReader = new ZXing.BrowserMultiFormatReader();
+    } else {
+      // Reset existing code reader
+      try {
+        codeReader.reset();
+      } catch (resetError) {
+        console.log('Code reader reset error (normal):', resetError.message);
+      }
     }
 
     // Prefer environment (rear) camera
     codeReader
       .listVideoInputDevices()
       .then(videoInputDevices => {
-        const preferredDeviceId = (videoInputDevices.find(d => /back|rear|environment/i.test(d.label)) || videoInputDevices[0])?.deviceId;
+        if (!videoInputDevices || videoInputDevices.length === 0) {
+          console.warn('⚠️ No video input devices found, will use facing mode');
+          // Don't throw error, continue with facing mode
+        }
+
+        // Find the best camera device
+        let preferredDeviceId = null;
+        let videoConstraints = {};
+        
+        if (videoInputDevices && videoInputDevices.length > 0) {
+          console.log('📱 Available video devices:', videoInputDevices.map(d => ({
+            deviceId: d.deviceId,
+            label: d.label,
+            groupId: d.groupId
+          })));
+          
+          // Try to find a rear camera first
+          const rearCamera = videoInputDevices.find(d => 
+            d.label && /back|rear|environment/i.test(d.label)
+          );
+          
+          if (rearCamera) {
+            preferredDeviceId = rearCamera.deviceId;
+            console.log('📹 Using rear camera:', rearCamera.label);
+          } else {
+            // Fallback to first available camera
+            preferredDeviceId = videoInputDevices[0].deviceId;
+            console.log('📹 Using first available camera:', videoInputDevices[0].label);
+          }
+          
+          // Validate device ID
+          if (preferredDeviceId && preferredDeviceId.length > 0) {
+            // Build video constraints with device ID
+            videoConstraints = {
+              deviceId: { exact: preferredDeviceId },
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+            console.log('🎯 Using specific device ID:', preferredDeviceId);
+          } else {
+            // Invalid device ID, fallback to facing mode
+            console.warn('⚠️ Invalid device ID, falling back to facing mode');
+            videoConstraints = {
+              facingMode: 'environment',
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+          }
+        } else {
+          // No specific devices, use facing mode
+          videoConstraints = {
+            facingMode: 'environment',
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            frameRate: { ideal: 30, min: 15 }
+          };
+          console.log('📹 Using facing mode (no specific device)');
+        }
+        
         updateStatus('scanning', 'Starting camera...');
-        activeVideoElement = video;
-        return codeReader.decodeFromVideoDevice(preferredDeviceId, video, (result, err, controls) => {
-          if (!isScanning) {
-            try { controls?.stop(); } catch (_) {}
-            return;
-          }
-          if (result) {
-            const now = Date.now();
-            const text = result.getText ? result.getText() : (result.text || '').toString();
-            // Throttle duplicate scans within 1.5s
-            if (text && (text !== lastScannedCode || now - lastScannedAt > 1500)) {
-              lastScannedCode = text;
-              lastScannedAt = now;
-              processScan(text, 'barcode');
-              if (!continuousMode) {
-                stopScanning();
-              }
-            }
-          }
-        });
+        
+        // Create video stream and start decoding
+        createVideoStream(videoConstraints, video, testStream);
       })
       .catch(err => {
         console.error('Error starting camera scanner:', err);
-        showMessage('Could not access camera for scanning', 'warning');
+        
+        // Handle specific camera errors
+        if (err.name === 'NotAllowedError') {
+          showMessage('Camera access denied. Please allow camera permissions.', 'error');
+          updateStatus('error', 'Camera permission denied');
+          updateCameraStatus('Permission denied');
+        } else if (err.name === 'NotFoundError') {
+          showMessage('No camera found on this device.', 'warning');
+          updateStatus('error', 'No camera found');
+          updateCameraStatus('Not found');
+        } else if (err.name === 'NotReadableError') {
+          showMessage('Camera is already in use by another application.', 'warning');
+          updateStatus('error', 'Camera in use');
+          updateCameraStatus('In use by another app');
+        } else {
+          showMessage('Could not access camera for scanning', 'warning');
+          updateStatus('error', 'Camera access failed');
+          updateCameraStatus('Access failed');
+        }
+        
+        // Reset camera state
+        isCameraActive = false;
+        cameraStream = null;
+        
+        // Add a manual retry button to the scanner area
+        const scannerArea = document.getElementById('scannerArea');
+        if (scannerArea && !scannerArea.querySelector('.manual-retry-btn')) {
+          const retryBtn = document.createElement('button');
+          retryBtn.className = 'btn btn-warning btn-sm manual-retry-btn mt-2';
+          retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Camera';
+          retryBtn.onclick = () => {
+            console.log('🔄 Manual retry requested...');
+            stopCameraBarcodeScanner();
+            setTimeout(() => {
+              if (isScanning) {
+                startCameraBarcodeScanner();
+              }
+            }, 1000);
+          };
+          scannerArea.appendChild(retryBtn);
+        }
       });
   } catch (e) {
     console.error('Camera scanner init error:', e);
+    updateStatus('error', 'Camera initialization failed');
+    updateCameraStatus('Initialization failed');
+    
+    // Add a manual retry button to the scanner area
+    const scannerArea = document.getElementById('scannerArea');
+    if (scannerArea && !scannerArea.querySelector('.manual-retry-btn')) {
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'btn btn-warning btn-sm manual-retry-btn mt-2';
+      retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Camera';
+      retryBtn.onclick = () => {
+        console.log('🔄 Manual retry requested...');
+        stopCameraBarcodeScanner();
+        setTimeout(() => {
+          if (isScanning) {
+            startCameraBarcodeScanner();
+          }
+        }, 1000);
+      };
+      scannerArea.appendChild(retryBtn);
+    }
+  }
+}
+
+async function createVideoStream(videoConstraints, video, testStream) {
+  // Stop the test stream and create a new one for the video element
+  if (testStream) {
+    testStream.getTracks().forEach(track => track.stop());
+  }
+
+  // Create a new stream for the video element
+  try {
+    console.log('🎥 Creating video stream with constraints:', videoConstraints);
+
+    const videoStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraints
+    });
+
+    // Set the stream to the video element
+    video.srcObject = videoStream;
+    cameraStream = videoStream;
+    activeVideoElement = video;
+    isCameraActive = true;
+    
+    // Update camera status
+    updateCameraStatus('Active', `Resolution: ${videoStream.getVideoTracks()[0]?.getSettings()?.width || 'Unknown'}x${videoStream.getVideoTracks()[0]?.getSettings()?.height || 'Unknown'}`);
+
+    console.log('✅ Video stream created and set to video element');
+    console.log('📊 Stream tracks:', videoStream.getTracks().map(t => ({
+      kind: t.kind,
+      label: t.label,
+      enabled: t.enabled,
+      readyState: t.readyState
+    })));
+
+    // Wait for video to be ready before starting decoder
+    video.addEventListener('canplay', function videoCanPlayListener() {
+      video.removeEventListener('canplay', videoCanPlayListener);
+      
+      console.log('📹 Video is ready, starting decoder...');
+      console.log('Video state:', {
+        readyState: video.readyState,
+        networkState: video.networkState,
+        currentTime: video.currentTime,
+        duration: video.duration,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight
+      });
+      
+      // Start the decoder
+      startBarcodeDecoder(video);
+    }, { once: true });
+
+    // Set a timeout for video readiness
+    const videoReadyTimeout = setTimeout(() => {
+      if (!video.readyState || video.readyState < 2) {
+        console.warn('⚠️ Video not ready after timeout, attempting fallback...');
+        
+        // Try to start decoder anyway
+        if (isCameraActive && isScanning) {
+          console.log('🔄 Attempting to start decoder despite video timeout...');
+          startBarcodeDecoder(video);
+        }
+      }
+    }, 5000);
+
+    // Handle video errors
+    video.addEventListener('error', function videoErrorListener(e) {
+      console.error('❌ Video error:', e);
+      console.error('Video error details:', {
+        error: video.error,
+        networkState: video.networkState,
+        readyState: video.readyState,
+        src: video.src,
+        srcObject: video.srcObject
+      });
+      
+      // Clear the timeout
+      clearTimeout(videoReadyTimeout);
+      
+      video.removeEventListener('error', videoErrorListener);
+      
+      // Log additional diagnostic information
+      if (video.error) {
+        console.error('Video error code:', video.error.code);
+        console.error('Video error message:', video.error.message);
+      }
+      
+      // Try to recover from the error
+      setTimeout(() => {
+        if (isScanning && isCameraActive) {
+          console.log('🔄 Attempting to recover from video error...');
+          stopCameraBarcodeScanner();
+          setTimeout(() => {
+            if (isScanning) {
+              startCameraBarcodeScanner();
+            }
+          }, 1000);
+        }
+      }, 2000);
+      
+      showMessage('Video error occurred. Attempting to recover...', 'warning');
+      updateStatus('error', 'Video error - recovering');
+    });
+
+    // Add additional event listeners for better debugging
+    video.addEventListener('loadstart', () => console.log('📹 Video loadstart event'));
+    video.addEventListener('loadedmetadata', () => console.log('📹 Video loadedmetadata event'));
+    video.addEventListener('loadeddata', () => console.log('📹 Video loadeddata event'));
+    video.addEventListener('canplay', () => console.log('📹 Video canplay event'));
+    video.addEventListener('canplaythrough', () => console.log('📹 Video canplaythrough event'));
+    video.addEventListener('playing', () => console.log('📹 Video playing event'));
+    
+    // Remove retry button if it exists
+    const retryBtn = document.querySelector('.manual-retry-btn');
+    if (retryBtn) {
+      retryBtn.remove();
+    }
+
+  } catch (streamError) {
+    console.error('❌ Error creating video stream:', streamError);
+    console.error('Stream error details:', {
+      name: streamError.name,
+      message: streamError.message,
+      constraint: streamError.constraint
+    });
+
+    // Try fallback with simpler constraints
+    try {
+      console.log('🔄 Trying fallback with simpler constraints...');
+      const fallbackStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { min: 320 },
+          height: { min: 240 }
+        }
+      });
+
+      video.srcObject = fallbackStream;
+      cameraStream = fallbackStream;
+      activeVideoElement = video;
+      isCameraActive = true;
+      
+      // Update camera status for fallback
+      updateCameraStatus('Active (Fallback)', 'Using basic camera settings');
+
+      console.log('✅ Fallback video stream created successfully');
+      
+      // Start decoder with fallback stream
+      startBarcodeDecoder(video);
+
+    } catch (fallbackError) {
+      console.error('❌ Fallback stream also failed:', fallbackError);
+      showMessage('Failed to start camera stream. Please check camera permissions and try again.', 'error');
+      updateStatus('error', 'Stream creation failed');
+      updateCameraStatus('Stream failed');
+      isCameraActive = false;
+      cameraStream = null;
+      
+      // Add a manual retry button to the scanner area
+      const scannerArea = document.getElementById('scannerArea');
+      if (scannerArea && !scannerArea.querySelector('.manual-retry-btn')) {
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'btn btn-warning btn-sm manual-retry-btn mt-2';
+        retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Camera';
+        retryBtn.onclick = () => {
+          console.log('🔄 Manual retry requested...');
+          stopCameraBarcodeScanner();
+          setTimeout(() => {
+            if (isScanning) {
+              startCameraBarcodeScanner();
+            }
+          }, 1000);
+        };
+        scannerArea.appendChild(retryBtn);
+      }
+      
+      return;
+    }
+  }
+}
+
+function startBarcodeDecoder(video) {
+  if (!codeReader || !isScanning) return;
+  
+  try {
+    // Start the decoder
+    codeReader.decodeFromVideoDevice(null, video, (result, err, controls) => {
+      if (!isScanning) {
+        try { 
+          if (controls && typeof controls.stop === 'function') {
+            controls.stop(); 
+          }
+        } catch (stopError) {
+          console.log('Controls stop error (normal):', stopError.message);
+        }
+        return;
+      }
+      
+      if (result) {
+        const now = Date.now();
+        const text = result.getText ? result.getText() : (result.text || '').toString();
+        // Throttle duplicate scans within 1.5s
+        if (text && (text !== lastScannedCode || now - lastScannedAt > 1500)) {
+          lastScannedCode = text;
+          lastScannedAt = now;
+          processScan(text, 'barcode');
+          if (!continuousMode) {
+            stopScanning();
+          }
+        }
+      }
+    });
+    
+    console.log('✅ Barcode decoder started successfully');
+    updateStatus('scanning', 'Camera active - scanning for barcodes...');
+    
+  } catch (decoderError) {
+    console.error('❌ Error starting barcode decoder:', decoderError);
+    showMessage('Error starting barcode decoder', 'error');
+    updateStatus('error', 'Decoder failed');
+    updateCameraStatus('Decoder failed');
   }
 }
 
 function stopCameraBarcodeScanner() {
   try {
+    console.log('🛑 Stopping camera barcode scanner...');
+    
+    // Stop the code reader
     if (codeReader) {
-      try { codeReader.reset(); } catch (_) {}
+      try { 
+        codeReader.reset(); 
+        console.log('✅ Code reader reset');
+      } catch (resetError) {
+        console.log('⚠️ Code reader reset error (normal):', resetError.message);
+      }
     }
+    
+    // Stop video tracks
     const video = document.getElementById('barcodeVideo');
-    if (video && video.srcObject) {
-      video.srcObject.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
+    if (video) {
+      // Pause the video
+      try {
+        video.pause();
+        video.currentTime = 0;
+      } catch (pauseError) {
+        console.log('⚠️ Video pause error (normal):', pauseError.message);
+      }
+      
+      // Stop all tracks
+      if (video.srcObject) {
+        try {
+          const tracks = video.srcObject.getTracks();
+          tracks.forEach(track => {
+            if (track && typeof track.stop === 'function') {
+              track.stop();
+            }
+          });
+          video.srcObject = null;
+          console.log('✅ Video tracks stopped');
+        } catch (trackError) {
+          console.log('⚠️ Track stop error (normal):', trackError.message);
+        }
+      }
+      
+      // Clear the video source
+      video.src = '';
+      video.load();
     }
+    
     activeVideoElement = null;
+    isCameraActive = false;
+    cameraStream = null;
+    
+    // Update camera status
+    updateCameraStatus('Not active');
+    
+    // Show placeholder again
+    showVideoPlaceholder();
+    
+    console.log('✅ Camera scanner stopped successfully');
+    
   } catch (e) {
-    console.warn('Error stopping camera:', e);
+    console.warn('⚠️ Error stopping camera:', e);
   }
 }
 
