@@ -767,9 +767,7 @@
           <button class="btn btn-outline-success btn-sm" onclick="generateInventoryBarcode()" title="Generate barcode from inventory data">
             <i class="bi bi-upc-scan"></i> Inventory Barcode
           </button>
-          <button class="btn btn-outline-info btn-sm" onclick="generateMultipleInventoryBarcodes()" title="Generate multiple inventory barcodes">
-            <i class="bi bi-collection"></i> Multiple
-          </button>
+
           <button class="btn btn-outline-secondary btn-sm" onclick="simulateBarcodeScan()" title="Simulate barcode scan for testing">
             <i class="bi bi-play-circle"></i> Simulate
           </button>
@@ -799,9 +797,9 @@
                <div>Scanning...</div>
                <div style="font-size: 0.8rem; margin-top: 4px; opacity: 0.8;">Point camera at barcode</div>
              </div>
-             <!-- Test barcode display -->
+             <!-- Inventory barcode display -->
              <div id="testBarcodeDisplay" style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 8px; display: none; max-width: 200px;">
-               <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Test Barcode:</div>
+               <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Inventory Barcode:</div>
                <canvas id="testBarcodeCanvas" style="max-width: 100%; height: auto;"></canvas>
                <div style="font-size: 0.7rem; margin-top: 4px; color: #666;">Scan this with camera</div>
              </div>
@@ -1066,8 +1064,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/@zxing/library@0.20.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@0.20.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script>
 // Check if ZXing library loaded successfully
 window.addEventListener('load', function() {
@@ -1471,83 +1470,7 @@ function generateInventoryBarcode() {
   }
 }
 
-function generateMultipleTestBarcodes() {
-  console.log('🎯 Generating multiple test barcodes...');
-  
-  try {
-    // Create multiple test barcodes in the same format as Inventory.html
-    const testCodes = [
-      'ITEM-001-456',
-      'PROD-002-789',
-      'SKU-003-321',
-      'CODE-004-654'
-    ];
-    
-    const canvas = document.getElementById('testBarcodeCanvas');
-    const display = document.getElementById('testBarcodeDisplay');
-    
-    if (canvas && display) {
-      // Set canvas dimensions for multiple barcodes
-      canvas.width = 400;
-      canvas.height = 120;
-      
-      const ctx = canvas.getContext('2d');
-      
-      // Clear canvas with white background
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw multiple barcodes side by side
-      testCodes.forEach((code, index) => {
-        const startX = 10 + (index * 95); // 95px spacing between barcodes
-        
-        // Draw barcode bars
-        ctx.fillStyle = 'black';
-        const barWidth = 1.5;
-        let x = startX;
-        
-        for (let i = 0; i < code.length; i++) {
-          const charCode = code.charCodeAt(i);
-          const barHeight = (charCode % 3 + 1) * 15 + 10;
-          const y = (canvas.height - barHeight) / 2;
-          
-          ctx.fillRect(x, y, barWidth, barHeight);
-          x += barWidth + 0.5;
-          
-          if (i < code.length - 1) {
-            x += 1;
-          }
-        }
-        
-        // Add text below each barcode
-        ctx.fillStyle = 'black';
-        ctx.font = '10px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(code, startX + 40, canvas.height - 5);
-      });
-      
-      // Show the test barcode display
-      display.style.display = 'block';
-      
-      console.log('✅ Multiple test barcodes generated:', testCodes);
-      showMessage(`Multiple test barcodes generated for testing`, 'success');
-      
-      // Auto-hide after 45 seconds
-      setTimeout(() => {
-        display.style.display = 'none';
-        console.log('🕒 Test barcode display auto-hidden');
-      }, 45000);
-      
-    } else {
-      console.error('❌ Test barcode canvas or display not found');
-      showMessage('Test barcode elements not found', 'error');
-    }
-    
-  } catch (error) {
-    console.error('❌ Error generating multiple test barcodes:', error);
-    showMessage(`Error generating test barcodes: ${error.message}`, 'error');
-  }
-}
+
 
 function simulateBarcodeScan() {
   console.log('🧪 Simulating barcode scan...');
@@ -1556,8 +1479,8 @@ function simulateBarcodeScan() {
     // Generate a test barcode code
     const testCode = 'SIM-001-' + Date.now().toString().slice(-3);
     
-    // Show the test barcode first
-    generateTestBarcode();
+    // Show the inventory barcode first
+    generateInventoryBarcode();
     
     // Simulate the scan after a short delay
     setTimeout(() => {
@@ -3646,6 +3569,52 @@ function stopCameraBarcodeScanner() {
     
   } catch (e) {
     console.warn('⚠️ Error stopping camera:', e);
+  }
+}
+
+function generateManualBarcode(canvas, codeValue) {
+  console.log('🔧 Generating manual barcode fallback for:', codeValue);
+  
+  try {
+    const ctx = canvas.getContext('2d');
+    
+    // Clear canvas with white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw barcode bars (CODE128 style)
+    ctx.fillStyle = 'black';
+    const barWidth = 2;
+    let x = 10;
+    
+    // Generate bars based on the code value
+    for (let i = 0; i < codeValue.length; i++) {
+      const charCode = codeValue.charCodeAt(i);
+      // Create varying bar heights for visual effect
+      const barHeight = (charCode % 3 + 1) * 20 + 15;
+      const y = (canvas.height - barHeight) / 2;
+      
+      // Draw the main bar
+      ctx.fillRect(x, y, barWidth, barHeight);
+      x += barWidth + 1;
+      
+      // Add spacing between characters
+      if (i < codeValue.length - 1) {
+        x += 2;
+      }
+    }
+    
+    // Add text below barcode
+    ctx.fillStyle = 'black';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(codeValue, canvas.width / 2, canvas.height - 5);
+    
+    console.log('✅ Manual barcode generated successfully');
+    
+  } catch (error) {
+    console.error('❌ Error generating manual barcode:', error);
+    throw error;
   }
 }
 
