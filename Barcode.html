@@ -2579,11 +2579,13 @@ async function startCameraBarcodeScanner() {
       video.srcObject = null;
     }
 
-    // Reset video element completely
+    // Reset video element completely but don't set empty src
     video.pause();
     video.currentTime = 0;
-    video.src = '';
-    video.load();
+    
+    // Don't set empty src - this causes the MEDIA_ELEMENT_ERROR
+    // video.src = '';
+    // video.load();
     
     // Set video properties for better compatibility
     video.autoplay = true;
@@ -3033,9 +3035,9 @@ function stopCameraBarcodeScanner() {
         }
       }
       
-      // Clear the video source
-      video.src = '';
-      video.load();
+      // Clear the video source but don't set empty src
+      // video.src = '';
+      // video.load();
     }
     
     activeVideoElement = null;
