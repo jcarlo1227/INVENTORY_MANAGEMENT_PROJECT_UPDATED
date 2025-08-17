@@ -492,6 +492,232 @@
       gap: 0.5rem;
       flex-wrap: wrap;
     }
+    
+    /* Camera status and retry button styles */
+    .manual-retry-btn {
+      background-color: var(--warning-color);
+      border-color: var(--warning-color);
+      color: white;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .manual-retry-btn:hover {
+      background-color: #e68900;
+      border-color: #e68900;
+      transform: translateY(-1px);
+    }
+    
+    .camera-status-info {
+      font-size: 0.8rem;
+      color: var(--sub-header);
+    }
+    
+    /* Video element improvements */
+    .video-container {
+      background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                  linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                  linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                  linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    
+    #barcodeVideo {
+      min-height: 200px;
+      background: transparent;
+    }
+    
+    #barcodeVideo:not([srcObject]) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--sub-header);
+      font-size: 0.9rem;
+    }
+    
+    /* Camera overlay styles */
+#cameraOverlay {
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  transition: all 0.3s ease;
+}
+
+/* Scanning overlay styles */
+#scanningOverlay {
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Test barcode display styles */
+#testBarcodeDisplay {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 2px solid var(--success-color);
+  transition: all 0.3s ease;
+}
+
+#testBarcodeDisplay:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+#testBarcodeCanvas {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Barcode product modal styles */
+#barcodeProductModal .modal-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+#barcodeProductModal .modal-header {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+#barcodeProductModal .modal-title {
+  font-weight: 600;
+}
+
+#barcodeProductModal .table {
+  margin-bottom: 0;
+}
+
+#barcodeProductModal .table th {
+  background-color: var(--bg-shadow);
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-color);
+}
+
+#barcodeProductModal .table td {
+  vertical-align: middle;
+  border-color: var(--border-color);
+}
+
+#barcodeProductModal .form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+#barcodeProductModal .btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+#barcodeProductModal .btn-primary:hover {
+  background-color: var(--tertiary-header);
+  border-color: var(--tertiary-header);
+}
+
+#barcodeProductModal .btn-primary:disabled {
+  background-color: var(--sub-header);
+  border-color: var(--sub-header);
+}
+
+/* Layout improvements for scan history and barcode generator */
+.scanner-card {
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.scanner-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+.scanner-card h5 {
+  color: var(--header-color);
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.scan-history {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--main-bg);
+}
+
+.barcode-items-grid {
+  max-height: 500px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--main-bg);
+  padding: 1rem;
+}
+
+/* Filter button improvements */
+.scanner-card .btn-sm {
+  margin: 0 0.25rem;
+  font-size: 0.8rem;
+  padding: 0.375rem 0.75rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .scanner-card {
+    margin-bottom: 1rem;
+  }
+  
+  .scanner-card h5 {
+    font-size: 1.1rem;
+  }
+  
+  .barcode-items-grid {
+    max-height: 300px;
+  }
+}
+
+/* Scanner controls improvements */
+.scanner-controls {
+  background: var(--main-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.scanner-controls .btn {
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.scanner-controls .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.scanner-controls .btn-sm {
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+}
+    
+    /* Video container improvements */
+    .video-container {
+      border: 2px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    
+    .video-container:has(video[srcObject]) {
+      border-color: var(--success-color);
+      box-shadow: 0 0 10px rgba(0, 176, 70, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -653,22 +879,88 @@
         <div class="mb-3">
           <span class="status-indicator status-ready" id="statusIndicator"></span>
           <span id="statusText">Ready to scan</span>
+          <div class="mt-1">
+            <small class="text-muted">
+              <span id="cameraStatus">Camera: Not active</span>
+              <span id="cameraInfo" class="ms-3" style="display: none;"></span>
+            </small>
+          </div>
         </div>
 
         <!-- Scanner Controls -->
-        <div class="scanner-controls">
-          <button class="btn btn-outline-success" onclick="continuousScan()" id="continuousBtn">
-            <i class="bi bi-arrow-repeat"></i> Continuous Scan
-          </button>
+        <div class="scanner-controls mb-3">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <button class="btn btn-outline-success w-100" onclick="continuousScan()" id="continuousBtn">
+                <i class="bi bi-arrow-repeat"></i> Continuous Scan
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button class="btn btn-outline-info w-100" onclick="generateInventoryBarcode()" title="Generate barcode from inventory data">
+                <i class="bi bi-upc-scan"></i> Generate Barcode
+              </button>
+            </div>
+          </div>
+          
+          <div class="row g-2 mt-2">
+            <div class="col-md-3">
+              <button class="btn btn-outline-warning btn-sm w-100" onclick="testCameraDisplay()" title="Test camera display">
+                <i class="bi bi-camera"></i> Test Camera
+              </button>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-outline-secondary btn-sm w-100" onclick="simulateBarcodeScan()" title="Simulate barcode scan for testing">
+                <i class="bi bi-play-circle"></i> Simulate
+              </button>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-outline-info btn-sm w-100" onclick="debugCameraState()" title="Debug camera state">
+                <i class="bi bi-bug"></i> Debug
+              </button>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-outline-danger btn-sm w-100" onclick="clearTestBarcode()" title="Clear test barcode display">
+                <i class="bi bi-x-circle"></i> Clear
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Scanner Area -->
         <div class="scanner-area" id="scannerArea">
-          <video id="barcodeVideo" autoplay playsinline style="width: 100%; max-height: 260px; border-radius: 8px; background: #000;"></video>
+          <div class="video-container" style="position: relative; width: 100%; max-height: 260px; border-radius: 8px; overflow: hidden; background: #000;">
+            <video id="barcodeVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+              <!-- Fallback content for browsers that don't support video -->
+              <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 0.9rem;">
+                Camera not active. Click "Start Barcode Scanner" to begin.
+              </div>
+            </video>
+                         <!-- Camera status overlay -->
+             <div id="cameraOverlay" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; display: none;">
+               Camera Active
+             </div>
+             <!-- Scanning indicator overlay -->
+             <div id="scanningOverlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 8px; font-size: 1rem; font-weight: 600; display: none; text-align: center;">
+               <div style="margin-bottom: 8px;">
+                 <i class="bi bi-camera" style="font-size: 1.2rem;"></i>
+               </div>
+               <div>Scanning...</div>
+               <div style="font-size: 0.8rem; margin-top: 4px; opacity: 0.8;">Point camera at barcode</div>
+             </div>
+             <!-- Inventory barcode display -->
+             <div id="testBarcodeDisplay" style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 8px; display: none; max-width: 200px;">
+               <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Inventory Barcode:</div>
+               <canvas id="testBarcodeCanvas" style="max-width: 100%; height: auto;"></canvas>
+               <div style="font-size: 0.7rem; margin-top: 4px; color: #666;">Scan this with camera</div>
+             </div>
+           </div>
+           
+          </div>
           <div class="mt-2">
             <h6>Point camera at barcode</h6>
             <p class="text-muted">Or manually enter code below</p>
           </div>
+          <!-- Manual retry button will be added here dynamically -->
         </div>
 
         <!-- Manual Input -->
@@ -690,6 +982,8 @@
           <span class="text-muted">Total scans: <span id="scanCount">0</span></span>
           <div>
             <button class="btn btn-sm btn-outline-primary" onclick="filterHistory('barcode')">Barcode</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterHistory('qr')">QR Code</button>
+            <button class="btn btn-sm btn-outline-info" onclick="filterHistory('all')">All</button>
           </div>
         </div>
         
@@ -703,27 +997,27 @@
       
       <!-- Barcode Generation Section -->
       <div class="scanner-card">
-        <h5><i class="bi bi-upc-scan me-2"></i>Inventory Barcode Generator</h5>
-        <p class="text-muted">Generate barcodes for inventory items</p>
+        <h5><i class="bi bi-upc-scan me-2"></i>Barcode Generation Tools</h5>
+        <p class="text-muted">Generate and manage barcodes for inventory items</p>
         
         <div class="row g-3 mb-3">
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label">Search Items</label>
             <input type="text" class="form-control" id="barcodeSearchInput" 
                    placeholder="Search by name or code..." onkeyup="filterBarcodeItems()">
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Category</label>
             <select class="form-select" id="barcodeCategoryFilter" onchange="filterBarcodeItems()">
               <option value="">All Categories</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Warehouse</label>
             <select class="form-select" id="barcodeWarehouseFilter" onchange="filterBarcodeItems()">
               <option value="">All Warehouses</option>
             </select>
-            </div>
+          </div>
         </div>
         
         <div class="barcode-items-grid" id="barcodeItemsGrid">
@@ -732,6 +1026,63 @@
             <p>Loading inventory items...</p>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Product Selection Modal for Barcode Generation -->
+<div class="modal fade" id="barcodeProductModal" tabindex="-1" aria-labelledby="barcodeProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="barcodeProductModalLabel">
+          <i class="bi bi-upc-scan"></i> Select Product for Barcode Generation
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Search and Filter Controls -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <input type="text" class="form-control" id="barcodeProductSearch" placeholder="Search products...">
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" id="barcodeProductCategoryFilter">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" id="barcodeProductWarehouseFilter">
+              <option value="">All Warehouses</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Product List -->
+        <div class="table-responsive" style="max-height: 400px;">
+          <table class="table table-hover">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Select</th>
+                <th>Product</th>
+                <th>Item Code</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="barcodeProductList">
+              <!-- Products will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="generateSelectedBarcode" disabled>
+          <i class="bi bi-upc-scan"></i> Generate Barcode
+        </button>
       </div>
     </div>
   </div>
@@ -924,9 +1275,22 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/@zxing/library@0.20.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@0.20.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script>
+// Check if ZXing library loaded successfully
+window.addEventListener('load', function() {
+  setTimeout(() => {
+    if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
+      console.error('❌ ZXing library failed to load');
+      showMessage('Barcode scanning library failed to load. Please check your internet connection and refresh the page.', 'error');
+      updateCameraStatus('Library failed to load');
+    } else {
+      console.log('✅ ZXing library loaded successfully');
+    }
+  }, 2000); // Wait 2 seconds for library to load
+});
 // Global variables
 let scanHistory = [];
 let inventoryData = [];
@@ -944,6 +1308,8 @@ let codeReader = null;
 let activeVideoElement = null;
 let lastScannedAt = 0;
 let lastScannedCode = '';
+let cameraStream = null;
+let isCameraActive = false;
 
 // API Helper Functions
 const API_BASE = '/api';
@@ -977,7 +1343,335 @@ document.addEventListener('DOMContentLoaded', function() {
   loadNotificationCount();
   updateScanCount();
   focusInput();
+  
+  // Initialize video placeholder
+  initializeVideoPlaceholder();
+  
+  // Initialize video element
+  initializeVideoElement();
+  
+  // Check camera availability
+  checkCameraAvailability().then(result => {
+    if (!result.available) {
+      console.warn('⚠️ Camera not available:', result.reason);
+      updateCameraStatus('Not available', result.reason);
+    }
+  });
 });
+
+function initializeVideoPlaceholder() {
+  const videoContainer = document.querySelector('.video-container');
+  const video = document.getElementById('barcodeVideo');
+  
+  if (videoContainer && video) {
+    // Add a placeholder overlay when video is not active
+    const placeholder = document.createElement('div');
+    placeholder.id = 'videoPlaceholder';
+    placeholder.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 0.9rem;
+      text-align: center;
+      border-radius: 8px;
+      z-index: 1;
+    `;
+    placeholder.innerHTML = `
+      <div>
+        <i class="bi bi-camera" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>
+        Camera not active<br>
+        <small>Click "Start Barcode Scanner" to begin</small>
+      </div>
+    `;
+    
+    // Add placeholder to the container, not the video element
+    videoContainer.appendChild(placeholder);
+    
+    // Remove placeholder when video becomes active
+    video.addEventListener('loadedmetadata', function() {
+      if (placeholder.parentNode) {
+        placeholder.remove();
+      }
+    });
+  }
+}
+
+function initializeVideoElement() {
+  const video = document.getElementById('barcodeVideo');
+  if (video) {
+    // Ensure video element has proper initial state
+    video.style.display = 'block';
+    video.style.minHeight = '200px';
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.objectFit = 'cover';
+    
+    // Add event listeners for better debugging
+    video.addEventListener('loadstart', () => console.log('📹 Video loadstart event'));
+    video.addEventListener('loadedmetadata', () => console.log('📹 Video loadedmetadata event'));
+    video.addEventListener('loadeddata', () => console.log('📹 Video loadeddata event'));
+    video.addEventListener('canplay', () => console.log('📹 Video canplay event'));
+    video.addEventListener('canplaythrough', () => console.log('📹 Video canplaythrough event'));
+    video.addEventListener('playing', () => console.log('📹 Video playing event'));
+    
+    console.log('✅ Video element initialized');
+  }
+}
+
+function showVideoPlaceholder() {
+  const videoContainer = document.querySelector('.video-container');
+  if (videoContainer && !videoContainer.querySelector('#videoPlaceholder')) {
+    const placeholder = document.createElement('div');
+    placeholder.id = 'videoPlaceholder';
+    placeholder.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 0.9rem;
+      text-align: center;
+      border-radius: 8px;
+      z-index: 1;
+    `;
+    placeholder.innerHTML = `
+      <div>
+        <i class="bi bi-camera" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>
+        Camera not active<br>
+        <small>Click "Start Barcode Scanner" to begin</small>
+      </div>
+    `;
+    
+    videoContainer.appendChild(placeholder);
+  }
+}
+
+function showCameraOverlay(show) {
+  const overlay = document.getElementById('cameraOverlay');
+  if (overlay) {
+    if (show) {
+      overlay.style.display = 'block';
+      overlay.textContent = 'Camera Active';
+      overlay.style.background = 'rgba(0, 128, 0, 0.8)'; // Green background
+    } else {
+      overlay.style.display = 'none';
+    }
+  }
+}
+
+function showScanningOverlay(show) {
+  const overlay = document.getElementById('scanningOverlay');
+  if (overlay) {
+    if (show) {
+      overlay.style.display = 'block';
+    } else {
+      overlay.style.display = 'none';
+    }
+  }
+}
+
+async function checkCameraAvailability() {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('⚠️ Media devices API not supported');
+      return { available: false, reason: 'Media devices API not supported' };
+    }
+    
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    
+    if (videoDevices.length === 0) {
+      console.warn('⚠️ No video input devices found');
+      return { available: false, reason: 'No video input devices found' };
+    }
+    
+    console.log('📱 Found video devices:', videoDevices.map(d => ({
+      deviceId: d.deviceId,
+      label: d.label,
+      groupId: d.groupId
+    })));
+    
+    return { available: true, devices: videoDevices };
+  } catch (error) {
+    console.error('❌ Error checking camera availability:', error);
+    return { available: false, reason: error.message };
+  }
+}
+
+function debugCameraState() {
+  console.log('🔍 Camera Debug Information:');
+  console.log('📱 Navigator media devices:', !!navigator.mediaDevices);
+  console.log('📱 getUserMedia support:', !!navigator.mediaDevices?.getUserMedia);
+  console.log('📱 enumerateDevices support:', !!navigator.mediaDevices?.enumerateDevices);
+  console.log('📹 Video element:', document.getElementById('barcodeVideo'));
+  console.log('📹 Video srcObject:', document.getElementById('barcodeVideo')?.srcObject);
+  console.log('📹 Video readyState:', document.getElementById('barcodeVideo')?.readyState);
+  console.log('📹 Video networkState:', document.getElementById('barcodeVideo')?.networkState);
+  console.log('📹 Video error:', document.getElementById('barcodeVideo')?.error);
+  console.log('🔍 ZXing library:', !!window.ZXing);
+  console.log('🔍 BrowserMultiFormatReader:', !!window.ZXing?.BrowserMultiFormatReader);
+  console.log('🔍 Code reader instance:', !!codeReader);
+  console.log('🔍 Camera active:', isCameraActive);
+  console.log('🔍 Camera stream:', !!cameraStream);
+  console.log('🔍 Active video element:', !!activeVideoElement);
+  console.log('🔍 Is scanning:', isScanning);
+  console.log('🔍 Scanner mode:', scannerMode);
+  console.log('🔍 Continuous mode:', continuousMode);
+}
+
+async function testCameraDisplay() {
+  console.log('🧪 Testing camera display...');
+  
+  try {
+    // Get a simple test stream
+    const testStream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      } 
+    });
+    
+    const video = document.getElementById('barcodeVideo');
+    if (video) {
+      // Set the test stream
+      video.srcObject = testStream;
+      
+      // Show camera overlay
+      showCameraOverlay(true);
+      showScanningOverlay(true);
+      updateCameraStatus('Test Active', 'Testing camera display');
+      
+      // Remove placeholder
+      const placeholder = document.querySelector('#videoPlaceholder');
+      if (placeholder) {
+        placeholder.remove();
+      }
+      
+      console.log('✅ Test camera stream started');
+      showMessage('Test camera stream started. Check if you can see the camera feed.', 'success');
+      
+      // Stop test after 5 seconds
+      setTimeout(() => {
+        testStream.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+        showCameraOverlay(false);
+        showScanningOverlay(false);
+        updateCameraStatus('Not active');
+        showVideoPlaceholder();
+        console.log('✅ Test camera stream stopped');
+        showMessage('Test camera stream stopped.', 'info');
+      }, 5000);
+      
+    } else {
+      console.error('❌ Video element not found');
+      showMessage('Video element not found', 'error');
+    }
+    
+  } catch (error) {
+    console.error('❌ Test camera failed:', error);
+    showMessage(`Test camera failed: ${error.message}`, 'error');
+  }
+}
+
+function generateInventoryBarcode() {
+  console.log('🎯 Opening product selection for barcode generation...');
+  
+  try {
+    // Check if we have inventory data
+    if (!inventoryData || inventoryData.length === 0) {
+      showMessage('No inventory data available. Please load inventory first.', 'warning');
+      return;
+    }
+    
+    // Populate the product selection modal
+    populateBarcodeProductModal();
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('barcodeProductModal'));
+    modal.show();
+    
+  } catch (error) {
+    console.error('❌ Error opening product selection:', error);
+    showMessage(`Error opening product selection: ${error.message}`, 'error');
+  }
+}
+
+
+
+function simulateBarcodeScan() {
+  console.log('🧪 Simulating barcode scan...');
+  
+  try {
+    // Check if we have inventory data
+    if (!inventoryData || inventoryData.length === 0) {
+      showMessage('No inventory data available. Please load inventory first.', 'warning');
+      return;
+    }
+    
+    // Get a random inventory item for simulation
+    const randomIndex = Math.floor(Math.random() * inventoryData.length);
+    const randomProduct = inventoryData[randomIndex];
+    const testCode = `${randomProduct.itemCode}-${randomProduct.id}`;
+    
+    console.log('📱 Simulating scan of:', testCode);
+    
+    // Process the simulated scan
+    const now = Date.now();
+    lastScannedCode = testCode;
+    lastScannedAt = now;
+    
+    // Process the scan and add to history
+    console.log('📝 Processing simulated barcode scan:', testCode);
+    processScan(testCode, 'barcode');
+    
+    // Show success feedback
+    showMessage(`Simulated barcode scan: ${testCode} (${randomProduct.productName})`, 'success');
+    
+    // Update status
+    updateStatus('success', `Simulated scan: ${testCode}`);
+    
+  } catch (error) {
+    console.error('❌ Error simulating barcode scan:', error);
+    showMessage(`Error simulating scan: ${error.message}`, 'error');
+  }
+}
+
+function clearTestBarcode() {
+  console.log('🧹 Clearing test barcode display...');
+  
+  try {
+    const display = document.getElementById('testBarcodeDisplay');
+    const canvas = document.getElementById('testBarcodeCanvas');
+    
+    if (display) {
+      display.style.display = 'none';
+    }
+    
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    console.log('✅ Test barcode display cleared');
+    showMessage('Test barcode display cleared', 'info');
+    
+  } catch (error) {
+    console.error('❌ Error clearing test barcode:', error);
+    showMessage(`Error clearing test barcode: ${error.message}`, 'error');
+  }
+}
 
 // Load initial data from database
 async function loadInitialData() {
@@ -1071,10 +1765,21 @@ function showMessage(message, type = 'info') {
 }
 
 function startBarcodeScanner() {
+  console.log('🚀 Starting barcode scanner...');
   scannerMode = 'barcode';
-  updateScannerMode();
   startScanning();
   startCameraBarcodeScanner();
+}
+
+function updateScannerMode() {
+  // Update UI to reflect current scanner mode
+  const scannerArea = document.getElementById('scannerArea');
+  if (scannerArea) {
+    scannerArea.classList.remove('active');
+    if (isScanning) {
+      scannerArea.classList.add('active');
+    }
+  }
 }
 
 
@@ -1425,6 +2130,24 @@ function updateStatus(status, message) {
   
   indicator.className = `status-indicator status-${status}`;
   text.textContent = message;
+}
+
+function updateCameraStatus(status, info = '') {
+  const cameraStatus = document.getElementById('cameraStatus');
+  const cameraInfo = document.getElementById('cameraInfo');
+  
+  if (cameraStatus) {
+    cameraStatus.textContent = `Camera: ${status}`;
+  }
+  
+  if (cameraInfo) {
+    if (info) {
+      cameraInfo.textContent = info;
+      cameraInfo.style.display = 'inline';
+    } else {
+      cameraInfo.style.display = 'none';
+    }
+  }
 }
 
 function filterHistory(type) {
@@ -1785,6 +2508,22 @@ function playBeep() {
 document.addEventListener('visibilitychange', function() {
   if (!document.hidden) {
     focusInput();
+  }
+});
+
+// Cleanup camera when page is unloaded
+window.addEventListener('beforeunload', function() {
+  if (isCameraActive) {
+    console.log('🧹 Cleaning up camera before page unload...');
+    stopCameraBarcodeScanner();
+  }
+});
+
+// Cleanup camera when page loses focus
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && isCameraActive) {
+    console.log('👁️ Page hidden, stopping camera...');
+    stopCameraBarcodeScanner();
   }
 });
 
@@ -2271,71 +3010,1044 @@ function filterBarcodeItems() {
   }).join('');
 }
 
-function startCameraBarcodeScanner() {
+async function startCameraBarcodeScanner() {
+  console.log('📹 Starting camera barcode scanner...');
+  console.log('🔍 Scanner mode:', scannerMode);
+  console.log('🔍 Is scanning:', isScanning);
+  
   try {
     if (!window.ZXing || !ZXing.BrowserMultiFormatReader) {
       console.warn('ZXing not loaded; skipping camera scanner');
+      showMessage('Barcode scanning library not loaded. Please refresh the page and try again.', 'error');
+      updateStatus('error', 'ZXing library not available');
+      updateCameraStatus('Library not loaded');
       return;
     }
     if (scannerMode !== 'barcode') return;
 
-    const video = document.getElementById('barcodeVideo');
-    if (!video) return;
+    // Check if camera is already active
+    if (isCameraActive) {
+      console.log('⚠️ Camera is already active, stopping previous session...');
+      stopCameraBarcodeScanner();
+      // Wait a bit for cleanup
+      setTimeout(() => startCameraBarcodeScanner(), 500);
+      return;
+    }
 
+    // Check camera permissions and get initial stream
+    console.log('🔐 Requesting camera permissions...');
+    let testStream = null;
+    try {
+      testStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'environment' // Prefer rear camera
+        } 
+      });
+      console.log('✅ Camera permissions granted and test stream created');
+      console.log('📊 Test stream tracks:', testStream.getTracks().map(t => ({
+        kind: t.kind,
+        label: t.label,
+        enabled: t.enabled,
+        readyState: t.readyState
+      })));
+    } catch (permissionError) {
+      console.error('❌ Camera permission error:', permissionError);
+      if (permissionError.name === 'NotAllowedError') {
+        showMessage('Camera access denied. Please allow camera permissions in your browser.', 'error');
+        updateStatus('error', 'Camera permission denied');
+        updateCameraStatus('Permission denied');
+        return;
+      } else if (permissionError.name === 'NotFoundError') {
+        showMessage('No camera found on this device.', 'warning');
+        updateStatus('error', 'No camera found');
+        updateCameraStatus('Not found');
+        return;
+      } else if (permissionError.name === 'NotReadableError') {
+        showMessage('Camera is already in use by another application.', 'warning');
+        updateStatus('error', 'Camera in use');
+        updateCameraStatus('In use by another app');
+        return;
+      }
+      throw permissionError;
+    }
+
+    const video = document.getElementById('barcodeVideo');
+    if (!video) {
+      console.error('❌ Video element not found');
+      return;
+    }
+    console.log('📹 Video element found:', video);
+    console.log('📹 Video element state:', {
+      readyState: video.readyState,
+      networkState: video.networkState,
+      srcObject: !!video.srcObject,
+      error: !!video.error
+    });
+
+    // Stop any existing video streams first
+    if (video.srcObject) {
+      const tracks = video.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      video.srcObject = null;
+    }
+
+    // Reset video element safely
+    console.log('🧹 Resetting video element...');
+    try {
+      video.pause();
+      video.currentTime = 0;
+      
+      // Ensure video properties are set correctly
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true;
+      video.controls = false;
+      
+      // Remove any existing error state
+      if (video.error) {
+        console.log('🧹 Clearing previous video error state');
+      }
+      
+      // Wait a bit for video element to reset
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('✅ Video element reset complete');
+      
+    } catch (resetError) {
+      console.warn('⚠️ Video reset error (non-critical):', resetError);
+      // Continue anyway
+    }
+
+    // Create new code reader instance if needed
+    console.log('🔍 Setting up code reader...');
     if (!codeReader) {
       codeReader = new ZXing.BrowserMultiFormatReader();
+      console.log('✅ New code reader instance created');
+    } else {
+      // Reset existing code reader
+      try {
+        codeReader.reset();
+        console.log('✅ Existing code reader reset');
+      } catch (resetError) {
+        console.log('⚠️ Code reader reset error (normal):', resetError.message);
+      }
     }
 
     // Prefer environment (rear) camera
+    console.log('🔍 Enumerating video input devices...');
     codeReader
       .listVideoInputDevices()
       .then(videoInputDevices => {
-        const preferredDeviceId = (videoInputDevices.find(d => /back|rear|environment/i.test(d.label)) || videoInputDevices[0])?.deviceId;
+        console.log('📱 Video input devices enumeration result:', videoInputDevices);
+        if (!videoInputDevices || videoInputDevices.length === 0) {
+          console.warn('⚠️ No video input devices found, will use facing mode');
+          // Don't throw error, continue with facing mode
+        }
+
+        // Find the best camera device
+        let preferredDeviceId = null;
+        let videoConstraints = {};
+        
+        if (videoInputDevices && videoInputDevices.length > 0) {
+          console.log('📱 Available video devices:', videoInputDevices.map(d => ({
+            deviceId: d.deviceId,
+            label: d.label,
+            groupId: d.groupId
+          })));
+          
+          // Try to find a rear camera first
+          const rearCamera = videoInputDevices.find(d => 
+            d.label && /back|rear|environment/i.test(d.label)
+          );
+          
+          if (rearCamera) {
+            preferredDeviceId = rearCamera.deviceId;
+            console.log('📹 Using rear camera:', rearCamera.label);
+          } else {
+            // Fallback to first available camera
+            preferredDeviceId = videoInputDevices[0].deviceId;
+            console.log('📹 Using first available camera:', videoInputDevices[0].label);
+          }
+          
+          // Validate device ID
+          if (preferredDeviceId && preferredDeviceId.length > 0) {
+            // Build video constraints with device ID
+            videoConstraints = {
+              deviceId: { exact: preferredDeviceId },
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+            console.log('🎯 Using specific device ID:', preferredDeviceId);
+          } else {
+            // Invalid device ID, fallback to facing mode
+            console.warn('⚠️ Invalid device ID, falling back to facing mode');
+            videoConstraints = {
+              facingMode: 'environment',
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              frameRate: { ideal: 30, min: 15 }
+            };
+          }
+        } else {
+          // No specific devices, use facing mode
+          videoConstraints = {
+            facingMode: 'environment',
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            frameRate: { ideal: 30, min: 15 }
+          };
+          console.log('📹 Using facing mode (no specific device)');
+        }
+        
         updateStatus('scanning', 'Starting camera...');
-        activeVideoElement = video;
-        return codeReader.decodeFromVideoDevice(preferredDeviceId, video, (result, err, controls) => {
-          if (!isScanning) {
-            try { controls?.stop(); } catch (_) {}
-            return;
-          }
-          if (result) {
-            const now = Date.now();
-            const text = result.getText ? result.getText() : (result.text || '').toString();
-            // Throttle duplicate scans within 1.5s
-            if (text && (text !== lastScannedCode || now - lastScannedAt > 1500)) {
-              lastScannedCode = text;
-              lastScannedAt = now;
-              processScan(text, 'barcode');
-              if (!continuousMode) {
-                stopScanning();
-              }
-            }
-          }
-        });
+        
+        // Create video stream and start decoding
+        console.log('🎥 Calling createVideoStream with constraints:', videoConstraints);
+        createVideoStream(videoConstraints, video, testStream);
       })
       .catch(err => {
         console.error('Error starting camera scanner:', err);
-        showMessage('Could not access camera for scanning', 'warning');
+        
+        // Handle specific camera errors
+        if (err.name === 'NotAllowedError') {
+          showMessage('Camera access denied. Please allow camera permissions.', 'error');
+          updateStatus('error', 'Camera permission denied');
+          updateCameraStatus('Permission denied');
+        } else if (err.name === 'NotFoundError') {
+          showMessage('No camera found on this device.', 'warning');
+          updateStatus('error', 'No camera found');
+          updateCameraStatus('Not found');
+        } else if (err.name === 'NotReadableError') {
+          showMessage('Camera is already in use by another application.', 'warning');
+          updateStatus('error', 'Camera in use');
+          updateCameraStatus('In use by another app');
+        } else {
+          showMessage('Could not access camera for scanning', 'warning');
+          updateStatus('error', 'Camera access failed');
+          updateCameraStatus('Access failed');
+        }
+        
+        // Reset camera state
+        isCameraActive = false;
+        cameraStream = null;
+        
+        // Add a manual retry button to the scanner area
+        const scannerArea = document.getElementById('scannerArea');
+        if (scannerArea && !scannerArea.querySelector('.manual-retry-btn')) {
+          const retryBtn = document.createElement('button');
+          retryBtn.className = 'btn btn-warning btn-sm manual-retry-btn mt-2';
+          retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Camera';
+          retryBtn.onclick = () => {
+            console.log('🔄 Manual retry requested...');
+            stopCameraBarcodeScanner();
+            setTimeout(() => {
+              if (isScanning) {
+                startCameraBarcodeScanner();
+              }
+            }, 1000);
+          };
+          scannerArea.appendChild(retryBtn);
+        }
       });
   } catch (e) {
     console.error('Camera scanner init error:', e);
+    updateStatus('error', 'Camera initialization failed');
+    updateCameraStatus('Initialization failed');
+    
+    // Add a manual retry button to the scanner area
+    const scannerArea = document.getElementById('scannerArea');
+    if (scannerArea && !scannerArea.querySelector('.manual-retry-btn')) {
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'btn btn-warning btn-sm manual-retry-btn mt-2';
+      retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Camera';
+      retryBtn.onclick = () => {
+        console.log('🔄 Manual retry requested...');
+        stopCameraBarcodeScanner();
+        setTimeout(() => {
+          if (isScanning) {
+            startCameraBarcodeScanner();
+          }
+        }, 1000);
+      };
+      scannerArea.appendChild(retryBtn);
+    }
+  }
+}
+
+async function createVideoStream(videoConstraints, video, testStream) {
+  console.log('🎥 createVideoStream called with:', {
+    videoConstraints,
+    video: !!video,
+    testStream: !!testStream
+  });
+  
+  // Validate video element
+  if (!video || !(video instanceof HTMLVideoElement)) {
+    console.error('❌ Invalid video element provided');
+    return;
+  }
+  
+  // Stop the test stream and create a new one for the video element
+  if (testStream) {
+    console.log('🛑 Stopping test stream...');
+    testStream.getTracks().forEach(track => track.stop());
+    console.log('✅ Test stream stopped');
+  }
+
+      // Create a new stream for the video element
+    try {
+      console.log('🎥 Creating video stream with constraints:', videoConstraints);
+
+      const videoStream = await navigator.mediaDevices.getUserMedia({
+        video: videoConstraints
+      });
+      
+      console.log('✅ Video stream created successfully');
+      console.log('📊 Video stream details:', {
+        tracks: videoStream.getTracks().length,
+        videoTracks: videoStream.getVideoTracks().length,
+        audioTracks: videoStream.getAudioTracks().length
+      });
+
+    // Set the stream to the video element safely
+    try {
+      console.log('🔧 Setting video stream to video element...');
+      
+      // Ensure video element is in a clean state
+      if (video.error) {
+        console.log('🧹 Video had previous error, clearing...');
+      }
+      
+      // Set the stream
+      video.srcObject = videoStream;
+      cameraStream = videoStream;
+      activeVideoElement = video;
+      isCameraActive = true;
+      
+      console.log('✅ Video properties set:', {
+        srcObject: !!video.srcObject,
+        cameraStream: !!cameraStream,
+        activeVideoElement: !!activeVideoElement,
+        isCameraActive: isCameraActive
+      });
+      
+      // Update camera status
+      updateCameraStatus('Active', `Resolution: ${videoStream.getVideoTracks()[0]?.getSettings()?.width || 'Unknown'}x${videoStream.getVideoTracks()[0]?.getSettings()?.height || 'Unknown'}`);
+
+      // Show camera overlay
+      showCameraOverlay(true);
+
+      console.log('✅ Video stream created and set to video element');
+      
+      // Show success message
+      showMessage('Camera started successfully! Point camera at a barcode to scan.', 'success');
+      
+    } catch (setError) {
+      console.error('❌ Error setting video stream:', setError);
+      throw setError;
+    }
+    console.log('📊 Stream tracks:', videoStream.getTracks().map(t => ({
+      kind: t.kind,
+      label: t.label,
+      enabled: t.enabled,
+      readyState: t.readyState
+    })));
+
+    // Wait for video to be ready before starting decoder
+    let videoReady = false;
+    
+    function onVideoReady() {
+      if (videoReady) return;
+      videoReady = true;
+      
+      console.log('📹 Video is ready, starting decoder...');
+      console.log('Video state:', {
+        readyState: video.readyState,
+        networkState: video.networkState,
+        currentTime: video.currentTime,
+        duration: video.duration,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight
+      });
+      
+      // Clear the timeout
+      if (videoReadyTimeout) {
+        clearTimeout(videoReadyTimeout);
+      }
+      
+      // Ensure video is visible and properly sized
+      video.style.display = 'block';
+      video.style.minHeight = '200px';
+      
+      console.log('🔧 Video element styling applied:', {
+        display: video.style.display,
+        minHeight: video.style.minHeight,
+        width: video.style.width,
+        height: video.style.height
+      });
+      
+      // Remove any placeholder
+      const placeholder = document.querySelector('#videoPlaceholder');
+      if (placeholder) {
+        placeholder.remove();
+        console.log('✅ Video placeholder removed');
+      }
+      
+      // Start the decoder
+      console.log('🚀 Starting barcode decoder...');
+      startBarcodeDecoder(video);
+    }
+    
+    // Listen for multiple video events to ensure we catch when it's ready
+    video.addEventListener('canplay', onVideoReady, { once: true });
+    video.addEventListener('loadeddata', onVideoReady, { once: true });
+    video.addEventListener('canplaythrough', onVideoReady, { once: true });
+    
+    // Set a timeout for video readiness
+    const videoReadyTimeout = setTimeout(() => {
+      if (!videoReady) {
+        console.warn('⚠️ Video not ready after timeout, attempting fallback...');
+        
+        // Try to start decoder anyway
+        if (isCameraActive && isScanning) {
+          console.log('🔄 Attempting to start decoder despite video timeout...');
+          
+          // Force video to play and then start decoder
+          try {
+            video.play().then(() => {
+              console.log('🎬 Video play successful, starting decoder...');
+              startBarcodeDecoder(video);
+            }).catch(playError => {
+              console.warn('⚠️ Video play failed, starting decoder anyway:', playError);
+              startBarcodeDecoder(video);
+            });
+          } catch (playError) {
+            console.warn('⚠️ Video play error, starting decoder anyway:', playError);
+            startBarcodeDecoder(video);
+          }
+        }
+      }
+    }, 3000); // Reduced timeout to 3 seconds
+
+    // Handle video errors
+    video.addEventListener('error', function videoErrorListener(e) {
+      console.error('❌ Video error:', e);
+      console.error('Video error details:', {
+        error: video.error,
+        networkState: video.networkState,
+        readyState: video.readyState,
+        src: video.src,
+        srcObject: video.srcObject
+      });
+      
+      // Clear the timeout
+      if (videoReadyTimeout) {
+        clearTimeout(videoReadyTimeout);
+      }
+      
+      video.removeEventListener('error', videoErrorListener);
+      
+      // Log additional diagnostic information
+      if (video.error) {
+        console.error('Video error code:', video.error.code);
+        console.error('Video error message:', video.error.message);
+        
+        // Handle specific error codes
+        switch (video.error.code) {
+          case 4: // MEDIA_ELEMENT_ERROR: Empty src attribute
+            console.warn('⚠️ Empty src attribute error - this should not happen with srcObject');
+            break;
+          case 1: // MEDIA_ERR_ABORTED
+            console.warn('⚠️ Media aborted - user or script stopped the media');
+            break;
+          case 2: // MEDIA_ERR_NETWORK
+            console.warn('⚠️ Network error - network error occurred');
+            break;
+          case 3: // MEDIA_ERR_DECODE
+            console.warn('⚠️ Decode error - media decoding failed');
+            break;
+          default:
+            console.warn('⚠️ Unknown video error code:', video.error.code);
+        }
+      }
+      
+      // Try to recover from the error
+      setTimeout(() => {
+        if (isScanning && isCameraActive) {
+          console.log('🔄 Attempting to recover from video error...');
+          stopCameraBarcodeScanner();
+          setTimeout(() => {
+            if (isScanning) {
+              startCameraBarcodeScanner();
+            }
+          }, 1000);
+        }
+      }, 2000);
+      
+      showMessage('Video error occurred. Attempting to recover...', 'warning');
+      updateStatus('error', 'Video error - recovering');
+    });
+
+    // Add additional event listeners for better debugging
+    video.addEventListener('loadstart', () => console.log('📹 Video loadstart event'));
+    video.addEventListener('loadedmetadata', () => console.log('📹 Video loadedmetadata event'));
+    video.addEventListener('loadeddata', () => console.log('📹 Video loadeddata event'));
+    video.addEventListener('canplay', () => console.log('📹 Video canplay event'));
+    video.addEventListener('canplaythrough', () => console.log('📹 Video canplaythrough event'));
+    video.addEventListener('playing', () => console.log('📹 Video playing event'));
+    
+    // Remove retry button if it exists
+    const retryBtn = document.querySelector('.manual-retry-btn');
+    if (retryBtn) {
+      retryBtn.remove();
+    }
+
+  } catch (streamError) {
+    console.error('❌ Error creating video stream:', streamError);
+    console.error('Stream error details:', {
+      name: streamError.name,
+      message: streamError.message,
+      constraint: streamError.constraint
+    });
+
+    // Try fallback with simpler constraints
+    try {
+      console.log('🔄 Trying fallback with simpler constraints...');
+      const fallbackStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { min: 320 },
+          height: { min: 240 }
+        }
+      });
+
+      video.srcObject = fallbackStream;
+      cameraStream = fallbackStream;
+      activeVideoElement = video;
+      isCameraActive = true;
+      
+      // Update camera status for fallback
+      updateCameraStatus('Active (Fallback)', 'Using basic camera settings');
+      
+      // Show camera overlay
+      showCameraOverlay(true);
+      showScanningOverlay(true);
+
+      console.log('✅ Fallback video stream created successfully');
+      
+      // Start decoder with fallback stream
+      startBarcodeDecoder(video);
+
+    } catch (fallbackError) {
+      console.error('❌ Fallback stream also failed:', fallbackError);
+      showMessage('Failed to start camera stream. Please check camera permissions and try again.', 'error');
+      updateStatus('error', 'Stream creation failed');
+      updateCameraStatus('Stream failed');
+      isCameraActive = false;
+      cameraStream = null;
+      
+      // Add a manual retry button to the scanner area
+      const scannerArea = document.getElementById('scannerArea');
+      if (scannerArea && !scannerArea.querySelector('.manual-retry-btn')) {
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'btn btn-warning btn-sm manual-retry-btn mt-2';
+        retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Camera';
+        retryBtn.onclick = () => {
+          console.log('🔄 Manual retry requested...');
+          stopCameraBarcodeScanner();
+          setTimeout(() => {
+            if (isScanning) {
+              startCameraBarcodeScanner();
+            }
+          }, 1000);
+        };
+        scannerArea.appendChild(retryBtn);
+      }
+      
+      return;
+    }
+  }
+}
+
+function startBarcodeDecoder(video) {
+  console.log('🔍 startBarcodeDecoder called with:', {
+    codeReader: !!codeReader,
+    isScanning: isScanning,
+    video: !!video
+  });
+  
+  if (!codeReader || !isScanning) {
+    console.warn('⚠️ Cannot start decoder:', {
+      codeReader: !!codeReader,
+      isScanning: isScanning
+    });
+    return;
+  }
+  
+  try {
+    console.log('🎯 Starting barcode decoder with video element...');
+    // Start the decoder
+    codeReader.decodeFromVideoDevice(null, video, (result, err, controls) => {
+      if (!isScanning) {
+        console.log('🛑 Scanner stopped, stopping decoder...');
+        try { 
+          if (controls && typeof controls.stop === 'function') {
+            controls.stop(); 
+          }
+        } catch (stopError) {
+          console.log('⚠️ Controls stop error (normal):', stopError.message);
+        }
+        return;
+      }
+      
+      if (result) {
+        const scannedText = result.getText ? result.getText() : (result.text || '').toString();
+        console.log('🎯 Barcode detected:', scannedText);
+        
+        const now = Date.now();
+        // Throttle duplicate scans within 1.5s
+        if (scannedText && (scannedText !== lastScannedCode || now - lastScannedAt > 1500)) {
+          lastScannedCode = scannedText;
+          lastScannedAt = now;
+          
+          // Process the scan and add to history
+          console.log('📝 Processing scanned barcode:', scannedText);
+          processScan(scannedText, 'barcode');
+          
+          // Show success feedback
+          showMessage(`Barcode detected: ${scannedText}`, 'success');
+          
+          if (!continuousMode) {
+            stopScanning();
+          }
+        }
+      }
+      
+      if (err) {
+        // Only log non-normal scanning errors
+        if (err.message && !err.message.includes('No MultiFormat Readers were able to detect the code')) {
+          console.log('⚠️ Decoder error:', err);
+        }
+      }
+    });
+    
+    console.log('✅ Barcode decoder started successfully');
+    updateStatus('scanning', 'Camera active - scanning for barcodes...');
+    
+  } catch (decoderError) {
+    console.error('❌ Error starting barcode decoder:', decoderError);
+    showMessage('Error starting barcode decoder', 'error');
+    updateStatus('error', 'Decoder failed');
+    updateCameraStatus('Decoder failed');
   }
 }
 
 function stopCameraBarcodeScanner() {
   try {
+    console.log('🛑 Stopping camera barcode scanner...');
+    
+    // Stop the code reader
     if (codeReader) {
-      try { codeReader.reset(); } catch (_) {}
+      try { 
+        codeReader.reset(); 
+        console.log('✅ Code reader reset');
+      } catch (resetError) {
+        console.log('⚠️ Code reader reset error (normal):', resetError.message);
+      }
     }
+    
+    // Stop video tracks
     const video = document.getElementById('barcodeVideo');
-    if (video && video.srcObject) {
-      video.srcObject.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
+    if (video) {
+      // Pause the video
+      try {
+        video.pause();
+        video.currentTime = 0;
+      } catch (pauseError) {
+        console.log('⚠️ Video pause error (normal):', pauseError.message);
+      }
+      
+      // Stop all tracks
+      if (video.srcObject) {
+        try {
+          const tracks = video.srcObject.getTracks();
+          tracks.forEach(track => {
+            if (track && typeof track.stop === 'function') {
+              track.stop();
+            }
+          });
+          video.srcObject = null;
+          console.log('✅ Video tracks stopped');
+        } catch (trackError) {
+          console.log('⚠️ Track stop error (normal):', trackError.message);
+        }
+      }
+      
+      // Clear the video source but don't set empty src
+      // video.src = '';
+      // video.load();
     }
+    
     activeVideoElement = null;
+    isCameraActive = false;
+    cameraStream = null;
+    
+    // Update camera status
+    updateCameraStatus('Not active');
+    
+    // Hide camera overlay
+    showCameraOverlay(false);
+    showScanningOverlay(false);
+    
+    // Show placeholder again
+    showVideoPlaceholder();
+    
+    console.log('✅ Camera scanner stopped successfully');
+    
   } catch (e) {
-    console.warn('Error stopping camera:', e);
+    console.warn('⚠️ Error stopping camera:', e);
   }
+}
+
+function generateManualBarcode(canvas, codeValue) {
+  console.log('🔧 Generating manual barcode fallback for:', codeValue);
+  
+  try {
+    const ctx = canvas.getContext('2d');
+    
+    // Clear canvas with white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw barcode bars (CODE128 style)
+    ctx.fillStyle = 'black';
+    const barWidth = 2;
+    let x = 10;
+    
+    // Generate bars based on the code value
+    for (let i = 0; i < codeValue.length; i++) {
+      const charCode = codeValue.charCodeAt(i);
+      // Create varying bar heights for visual effect
+      const barHeight = (charCode % 3 + 1) * 20 + 15;
+      const y = (canvas.height - barHeight) / 2;
+      
+      // Draw the main bar
+      ctx.fillRect(x, y, barWidth, barHeight);
+      x += barWidth + 1;
+      
+      // Add spacing between characters
+      if (i < codeValue.length - 1) {
+        x += 2;
+      }
+    }
+    
+    // Add text below barcode
+    ctx.fillStyle = 'black';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(codeValue, canvas.width / 2, canvas.height - 5);
+    
+    console.log('✅ Manual barcode generated successfully');
+    
+  } catch (error) {
+    console.error('❌ Error generating manual barcode:', error);
+    throw error;
+  }
+}
+
+function populateBarcodeProductModal() {
+  console.log('📋 Populating barcode product selection modal...');
+  
+  try {
+    // Populate category filter
+    const categoryFilter = document.getElementById('barcodeProductCategoryFilter');
+    if (categoryFilter && categoriesData) {
+      categoryFilter.innerHTML = '<option value="">All Categories</option>';
+      categoriesData.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        categoryFilter.appendChild(option);
+      });
+    }
+    
+    // Populate warehouse filter
+    const warehouseFilter = document.getElementById('barcodeProductWarehouseFilter');
+    if (warehouseFilter && warehousesData) {
+      warehouseFilter.innerHTML = '<option value="">All Warehouses</option>';
+      warehousesData.forEach(warehouse => {
+        const option = document.createElement('option');
+        option.value = warehouse.id;
+        option.textContent = warehouse.name;
+        warehouseFilter.appendChild(option);
+      });
+    }
+    
+    // Populate product list
+    populateBarcodeProductList();
+    
+    // Add event listeners
+    addBarcodeModalEventListeners();
+    
+  } catch (error) {
+    console.error('❌ Error populating barcode product modal:', error);
+    showMessage(`Error populating product selection: ${error.message}`, 'error');
+  }
+}
+
+function populateBarcodeProductList(filteredData = null) {
+  const productList = document.getElementById('barcodeProductList');
+  if (!productList) return;
+  
+  const dataToShow = filteredData || inventoryData;
+  
+  if (dataToShow.length === 0) {
+    productList.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center text-muted py-4">
+          <i class="bi bi-inbox" style="font-size: 1.5rem;"></i>
+          <p class="mt-2">No products found</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  productList.innerHTML = dataToShow.map(item => `
+    <tr>
+      <td>
+        <input type="radio" name="selectedProduct" value="${item.id}" class="form-check-input">
+      </td>
+      <td>
+        <strong>${item.productName || 'Unnamed Product'}</strong>
+        ${item.description ? `<br><small class="text-muted">${item.description}</small>` : ''}
+      </td>
+      <td><code>${item.itemCode || 'N/A'}</code></td>
+      <td>${getCategoryName(item.categoryId) || '-'}</td>
+      <td>
+        <span class="badge bg-${item.totalQuantity > 0 ? 'success' : 'danger'}">
+          ${item.totalQuantity || 0}
+        </span>
+      </td>
+      <td>
+        <span class="badge bg-${getStatusColor(item.status)}">
+          ${item.status || 'Unknown'}
+        </span>
+      </td>
+    </tr>
+  `).join('');
+  
+  // Add radio button change listeners
+  document.querySelectorAll('input[name="selectedProduct"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      const generateBtn = document.getElementById('generateSelectedBarcode');
+      if (generateBtn) {
+        generateBtn.disabled = false;
+      }
+    });
+  });
+}
+
+function addBarcodeModalEventListeners() {
+  // Search functionality
+  const searchInput = document.getElementById('barcodeProductSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      filterBarcodeProducts();
+    });
+  }
+  
+  // Category filter
+  const categoryFilter = document.getElementById('barcodeProductCategoryFilter');
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', function() {
+      filterBarcodeProducts();
+    });
+  }
+  
+  // Warehouse filter
+  const warehouseFilter = document.getElementById('barcodeProductWarehouseFilter');
+  if (warehouseFilter) {
+    warehouseFilter.addEventListener('change', function() {
+      filterBarcodeProducts();
+    });
+  }
+  
+  // Generate barcode button
+  const generateBtn = document.getElementById('generateSelectedBarcode');
+  if (generateBtn) {
+    generateBtn.addEventListener('click', function() {
+      generateSelectedProductBarcode();
+    });
+  }
+}
+
+function filterBarcodeProducts() {
+  const searchTerm = document.getElementById('barcodeProductSearch')?.value.trim().toLowerCase() || '';
+  const categoryFilter = document.getElementById('barcodeProductCategoryFilter')?.value || '';
+  const warehouseFilter = document.getElementById('barcodeProductWarehouseFilter')?.value || '';
+  
+  let filteredData = inventoryData;
+  
+  // Apply search filter
+  if (searchTerm) {
+    filteredData = filteredData.filter(item => 
+      (item.productName && item.productName.toLowerCase().includes(searchTerm)) ||
+      (item.itemCode && item.itemCode.toLowerCase().includes(searchTerm)) ||
+      (item.description && item.description.toLowerCase().includes(searchTerm))
+    );
+  }
+  
+  // Apply category filter
+  if (categoryFilter) {
+    filteredData = filteredData.filter(item => item.categoryId == categoryFilter);
+  }
+  
+  // Apply warehouse filter
+  if (warehouseFilter) {
+    filteredData = filteredData.filter(item => item.warehouseId == warehouseFilter);
+  }
+  
+  // Repopulate the list with filtered data
+  populateBarcodeProductList(filteredData);
+  
+  // Reset generate button state
+  const generateBtn = document.getElementById('generateSelectedBarcode');
+  if (generateBtn) {
+    generateBtn.disabled = true;
+  }
+}
+
+function generateSelectedProductBarcode() {
+  const selectedRadio = document.querySelector('input[name="selectedProduct"]:checked');
+  if (!selectedRadio) {
+    showMessage('Please select a product first', 'warning');
+    return;
+  }
+  
+  const selectedProductId = selectedRadio.value;
+  const selectedProduct = inventoryData.find(item => item.id == selectedProductId);
+  
+  if (!selectedProduct) {
+    showMessage('Selected product not found', 'error');
+    return;
+  }
+  
+  console.log('🎯 Generating barcode for selected product:', selectedProduct);
+  
+  try {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('barcodeProductModal'));
+    if (modal) {
+      modal.hide();
+    }
+    
+    // Generate the barcode using the same method as Inventory.html
+    generateProductBarcode(selectedProduct);
+    
+  } catch (error) {
+    console.error('❌ Error generating selected product barcode:', error);
+    showMessage(`Error generating barcode: ${error.message}`, 'error');
+  }
+}
+
+function generateProductBarcode(product) {
+  console.log('🎯 Generating barcode for product:', product);
+  
+  try {
+    const codeValue = `${product.itemCode}-${product.id}`; // Same format as Inventory.html
+    const canvas = document.getElementById('testBarcodeCanvas');
+    const display = document.getElementById('testBarcodeDisplay');
+    
+    if (canvas && display) {
+      // Set canvas dimensions to match Inventory.html exactly
+      canvas.width = 200;
+      canvas.height = 100;
+      
+      // Generate barcode using JsBarcode (same as Inventory.html)
+      if (window.JsBarcode) {
+        try {
+          // Use the exact same JsBarcode configuration as Inventory.html
+          JsBarcode(canvas, codeValue, {
+            format: "CODE128",
+            width: 2,
+            height: 80,
+            displayValue: true,
+            fontSize: 14,
+            margin: 10
+          });
+          
+          console.log('✅ Barcode generated with JsBarcode:', codeValue);
+          
+        } catch (barcodeError) {
+          console.error('❌ Error with JsBarcode, using fallback:', barcodeError);
+          generateManualBarcode(canvas, codeValue);
+        }
+      } else {
+        console.log('⚠️ JsBarcode not available, using fallback');
+        generateManualBarcode(canvas, codeValue);
+      }
+      
+      // Show the barcode display
+      display.style.display = 'block';
+      
+      // Update display info with product details
+      const infoDiv = display.querySelector('div:last-child');
+      if (infoDiv) {
+        infoDiv.innerHTML = `
+          <div style="font-size: 0.7rem; margin-top: 4px; color: #666;">
+            <strong>Product:</strong> ${product.productName}<br>
+            <strong>Code:</strong> ${codeValue}<br>
+            <strong>Quantity:</strong> ${product.totalQuantity || 0}<br>
+            <strong>Category:</strong> ${getCategoryName(product.categoryId) || '-'}
+          </div>
+        `;
+      }
+      
+      console.log('✅ Product barcode generated successfully:', codeValue);
+      showMessage(`Barcode generated for: ${product.productName}`, 'success');
+      
+      // Auto-hide after 30 seconds
+      setTimeout(() => {
+        display.style.display = 'none';
+        console.log('🕒 Product barcode display auto-hidden');
+      }, 30000);
+      
+    } else {
+      console.error('❌ Barcode canvas or display not found');
+      showMessage('Barcode display elements not found', 'error');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error generating product barcode:', error);
+    showMessage(`Error generating product barcode: ${error.message}`, 'error');
+  }
+}
+
+// Helper functions for barcode generation
+function getStatusColor(status) {
+  switch (status?.toLowerCase()) {
+    case 'active':
+    case 'in stock':
+      return 'success';
+    case 'low stock':
+      return 'warning';
+    case 'out of stock':
+    case 'discontinued':
+      return 'danger';
+    case 'pending':
+      return 'info';
+    default:
+      return 'secondary';
+  }
+}
+
+function getCategoryName(categoryId) {
+  if (!categoriesData || !categoryId) return null;
+  const category = categoriesData.find(cat => cat.id == categoryId);
+  return category ? category.name : null;
 }
 
 </script>
