@@ -663,29 +663,71 @@ const createInventoryItem = async (itemData) => {
 const updateInventoryItem = async (id, itemData) => {
   try {
     const sql = await database.sql();
-    const {
-      item_code,
-      product_id,
-      unit_of_measure,
-      category_id,
-      status,
-      warehouse_id,
-      total_quantity
-    } = itemData;
     
-    const result = await sql`
-      UPDATE inventory_items SET
-        item_code = ${item_code},
-        product_id = ${product_id},
-        unit_of_measure = ${unit_of_measure},
-        category_id = ${category_id},
-        status = ${status},
-        warehouse_id = ${warehouse_id},
-        total_quantity = ${total_quantity},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
+    // Build dynamic update query based on provided fields
+    let updateFields = [];
+    let updateValues = [];
+    let valueIndex = 1;
+    
+    // Only update fields that are provided
+    if (itemData.item_code !== undefined) {
+      updateFields.push(`item_code = $${valueIndex++}`);
+      updateValues.push(itemData.item_code);
+    }
+    
+    if (itemData.product_id !== undefined) {
+      updateFields.push(`product_id = $${valueIndex++}`);
+      updateValues.push(itemData.product_id);
+    }
+    
+    if (itemData.unit_of_measure !== undefined) {
+      updateFields.push(`unit_of_measure = $${valueIndex++}`);
+      updateValues.push(itemData.unit_of_measure);
+    }
+    
+    if (itemData.category_id !== undefined) {
+      updateFields.push(`category_id = $${valueIndex++}`);
+      updateValues.push(itemData.category_id);
+    }
+    
+    if (itemData.status !== undefined) {
+      updateFields.push(`status = $${valueIndex++}`);
+      updateValues.push(itemData.status);
+    }
+    
+    if (itemData.warehouse_id !== undefined) {
+      updateFields.push(`warehouse_id = $${valueIndex++}`);
+      updateValues.push(itemData.warehouse_id);
+    }
+    
+    if (itemData.total_quantity !== undefined) {
+      updateFields.push(`total_quantity = $${valueIndex++}`);
+      updateValues.push(itemData.total_quantity);
+    }
+    
+    // Always update the updated_at timestamp
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    
+    if (updateFields.length === 0) {
+      throw new Error('No fields to update');
+    }
+    
+    // Build the dynamic SQL query
+    const updateQuery = `
+      UPDATE inventory_items 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${valueIndex}
       RETURNING *
     `;
+    
+    // Add the ID to the values array
+    updateValues.push(id);
+    
+    const result = await sql.unsafe(updateQuery, ...updateValues);
+    
+    if (result.length === 0) {
+      throw new Error(`Inventory item with ID ${id} not found`);
+    }
     
     return result[0];
   } catch (err) {

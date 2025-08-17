@@ -417,22 +417,41 @@ app.post('/api/inventory/delete-multiple', requireAuth, async (req, res) => {
 // API: Update inventory item
 app.put('/api/inventory/:id', requireAuth, async (req, res) => {
   try {
+    console.log('Updating inventory item:', req.params.id, 'with data:', req.body);
+    
     const updatedItem = await updateInventoryItem(req.params.id, req.body);
+    
+    if (!updatedItem) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Inventory item not found' 
+      });
+    }
     
     // Create notification for successful item update
     try {
       await createNotification(
         'Item Updated Successfully',
-        `${updatedItem.name} (SKU: ${updatedItem.sku}) has been updated in inventory`,
+        `${updatedItem.product_name || updatedItem.item_code || 'Item'} has been updated in inventory`,
         'info'
       );
     } catch (notifError) {
       console.error('Failed to create notification:', notifError);
+      // Don't fail the request if notification fails
     }
     
-    res.json({ success: true, message: 'Item updated successfully', data: updatedItem });
+    res.json({ 
+      success: true, 
+      message: 'Item updated successfully', 
+      data: updatedItem 
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to update item' });
+    console.error('Error updating inventory item:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to update item',
+      error: err.message 
+    });
   }
 });
 

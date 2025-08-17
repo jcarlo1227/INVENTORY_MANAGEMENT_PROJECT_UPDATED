@@ -482,30 +482,62 @@ const createNotification = async (title, message, type = 'info') => {
       return null;
     }
     
-    const result = await sql`
-      INSERT INTO notifications (title, message, type, created_at, is_read) 
-      VALUES (${title}, ${message}, ${type}, CURRENT_TIMESTAMP, false)
-      RETURNING id, title, message, type, created_at, is_read
-    `;
-    return result[0];
-  } catch (err) {
-    console.error('Create notification error:', err);
-    // Fallback to in-memory storage
-    const notification = {
-      id: nextNotificationId++,
-      title,
-      message,
-      type,
-      created_at: new Date().toISOString(),
-      is_read: false
-    };
-    inMemoryNotifications.unshift(notification);
-    // Keep only the latest 20 notifications
-    if (inMemoryNotifications.length > 20) {
-      inMemoryNotifications = inMemoryNotifications.slice(0, 20);
+    // First, check if notifications table exists and has the right structure
+    try {
+      // Check if notifications table exists
+      const tableCheck = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'notifications'
+        )
+      `;
+      
+      if (!tableCheck[0]?.exists) {
+        // Create notifications table if it doesn't exist
+        await sql`
+          CREATE TABLE IF NOT EXISTS notifications (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            type VARCHAR(50) DEFAULT 'info',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_read BOOLEAN DEFAULT FALSE
+          )
+        `;
+        console.log('✅ Notifications table created');
+      }
+      
+      const result = await sql`
+        INSERT INTO notifications (title, message, type, created_at, is_read) 
+        VALUES (${title}, ${message}, ${type}, CURRENT_TIMESTAMP, false)
+        RETURNING id, title, message, type, created_at, is_read
+      `;
+      
+      return result[0];
+          } catch (tableError) {
+        console.error('Table creation/check error:', tableError);
+        // Fallback to in-memory storage
+        throw new Error('Database table issue, using in-memory storage');
+      }
+    } catch (err) {
+      console.error('Create notification error:', err);
+      // Fallback to in-memory storage
+      const notification = {
+        id: nextNotificationId++,
+        title,
+        message,
+        type,
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+      inMemoryNotifications.unshift(notification);
+      // Keep only the latest 20 notifications
+      if (inMemoryNotifications.length > 20) {
+        inMemoryNotifications = inMemoryNotifications.slice(0, 20);
+      }
+      return notification;
     }
-    return notification;
-  }
 };
 
 const getNotifications = async (limit = 10) => {
