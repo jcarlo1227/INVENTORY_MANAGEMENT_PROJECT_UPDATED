@@ -1492,7 +1492,7 @@
   let realTimeInterval = null;
   let overviewInterval = null;
   let lastUpdateTime = null;
-  let isRealTimeEnabled = true;
+  let isRealTimeEnabled = false;
   
   // Real-time configuration
   const REAL_TIME_CONFIG = {
@@ -1502,7 +1502,7 @@
     recommendations: 90000, // 1.5 minutes
     notifications: 15000,   // 15 seconds
     inventory: 60000,    // 1 minute
-    orderShipments: 30000, // 30 seconds
+    orderShipments: 120000, // 2 minutes
     scanHistory: 45000   // 45 seconds
   };
   
@@ -1770,7 +1770,7 @@
         loadRecommendations(),
         loadNotifications(),
         loadInventoryOverview(),
-        loadOrderShipmentStats(),
+        loadOrderShipmentStatsOnly(),
         loadScanHistory()
       ];
       
@@ -1806,7 +1806,7 @@
       if (isRealTimeEnabled) {
         refreshOverviewData();
       }
-    }, 5000); // Refresh overview every 5 seconds
+    }, 1800000); // Refresh overview every 30 minutes
     
     console.log('Real-time updates started');
   }
@@ -1848,7 +1848,7 @@
       
       // Update order shipments if needed
       if (!lastUpdateTime || (currentTime - lastUpdateTime) >= REAL_TIME_CONFIG.orderShipments) {
-        await loadOrderShipmentStats();
+        await loadOrderShipmentStatsOnly();
       }
       
       // Update scan history if needed
@@ -1867,12 +1867,8 @@
   // Refresh overview data for real-time display
   async function refreshOverviewData() {
     try {
-      // Only refresh overview sections, not full data loads
-      await Promise.all([
-        loadInventoryOverview(),
-        loadOrderShipmentStats(),
-        loadScanHistory()
-      ]);
+      // Only refresh minimal shipment statistics to reduce load
+      await loadOrderShipmentStatsOnly();
       
       // Update timestamp for overview refresh
       const overviewUpdateTime = new Date();
@@ -2397,54 +2393,22 @@
     }
   }
   
-  // Load order shipment statistics from database with enhanced data
-  async function loadOrderShipmentStats() {
+  // Load order shipment statistics only (no full list)
+  async function loadOrderShipmentStatsOnly() {
     try {
-      // Fetch order shipments data
-      const shipmentsResponse = await fetch('/api/order-shipments');
-      const shipmentsResult = await shipmentsResponse.json();
-      
-      // Fetch shipment statistics
       const statsResponse = await fetch('/api/order-shipments/stats');
       const statsResult = await statsResponse.json();
-      
-      if (shipmentsResult.success && statsResult.success) {
-        const shipments = shipmentsResult.data || [];
+      if (statsResult && statsResult.success) {
         const stats = statsResult.data || {};
-        
-        // Calculate shipment metrics based on status and time
-        const totalShipments = shipments.length;
-        
-        // Pending: Status is "processed" in order shipments
-        const pendingShipments = shipments.filter(shipment => 
-          shipment.status === 'processed'
-        ).length;
-        
-        // Shipped Today: Status is "shipped" 
-        const shippedToday = shipments.filter(shipment => 
-          shipment.status === 'shipped'
-        ).length;
-        
-        // Delayed: Status "shipped" is greater than or equal to 1 day
-        const oneDayAgo = new Date();
-        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-        const delayedShipments = shipments.filter(shipment => {
-          const shipmentDate = new Date(shipment.updated_at || shipment.created_at);
-          return shipment.status === 'shipped' && shipmentDate <= oneDayAgo;
-        }).length;
-        
-        const combinedData = {
-          shipments: shipments,
-          stats: stats,
-          totalShipments: totalShipments,
-          pendingShipments: pendingShipments,
-          shippedToday: shippedToday,
-          delayedShipments: delayedShipments
-        };
-        updateOrderShipmentOverview(combinedData);
+        updateOrderShipmentOverview({
+          totalShipments: stats.totalOrders || 0,
+          pendingShipments: stats.processingOrders || 0,
+          shippedToday: stats.shippedOrders || 0,
+          delayedShipments: stats.delayedShippedOrders || 0
+        });
       }
     } catch (error) {
-      console.error('Error loading order shipment stats:', error);
+      console.error('Error loading order shipment stats (stats only):', error);
     }
   }
   

@@ -193,6 +193,28 @@ const initializeOrderShipmentsTable = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       )
     `;
+    // Seed default business and customers for fresh databases
+    try {
+      const existingBiz = await sql`SELECT id FROM businesses LIMIT 1`;
+      let defaultBusinessId = existingBiz && existingBiz.length ? existingBiz[0].id : null;
+      if (!defaultBusinessId) {
+        const insBiz = await sql`INSERT INTO businesses DEFAULT VALUES RETURNING id`;
+        defaultBusinessId = insBiz[0].id;
+      }
+      // Insert a couple of default customers if table is empty
+      const existingCustomers = await sql`SELECT COUNT(*)::int AS count FROM customers`;
+      if (existingCustomers[0].count === 0) {
+        await sql`
+          INSERT INTO customers (business_id, first_name, last_name, email, phone)
+          VALUES
+            (${defaultBusinessId}, 'John', 'Doe', 'john.doe@example.com', '555-0100'),
+            (${defaultBusinessId}, 'Jane', 'Smith', 'jane.smith@example.com', '555-0101')
+          ON CONFLICT (email) DO NOTHING
+        `;
+      }
+    } catch (seedErr) {
+      console.warn('⚠️ Seeding default businesses/customers skipped:', seedErr?.message);
+    }
 
     // Create production_planning table and trigger to populate from sales_orders
     await sql`
@@ -378,26 +400,47 @@ const initializeOrderShipmentsTable = async () => {
       console.log('⚠️ production_planning table does not exist, skipping FK constraint');
     }
 
-    // Align and add customer_id on order_shipments based on sales_orders.customer_id if available
-    let customerIdTargetType = 'VARCHAR(50)';
-    let customerIdCastType = 'text';
-    const soCustCol = await sql`
-      SELECT data_type, udt_name, character_maximum_length
+    // Align and add customer_id on order_shipments to match customers.customer_id type
+    let customerIdTargetType = 'INTEGER';
+    let customerIdCastType = 'integer';
+    // Prefer customers table type to ensure FK compatibility
+    const custIdCol = await sql`
+      SELECT data_type, udt_name
       FROM information_schema.columns
-      WHERE table_name = 'sales_orders' AND column_name = 'customer_id'
+      WHERE table_name = 'customers' AND column_name = 'customer_id'
       LIMIT 1
     `;
-    if (soCustCol && soCustCol.length) {
-      const soType = String(soCustCol[0].data_type || '').toLowerCase();
-      const soUdt = String(soCustCol[0].udt_name || '').toLowerCase();
-      const soLen = soCustCol[0].character_maximum_length || 50;
-      customerIdTargetType = 'VARCHAR(' + soLen + ')';
-      if (soType.includes('integer') || soUdt === 'int4') {
-        customerIdTargetType = 'INTEGER';
-        customerIdCastType = 'integer';
-      } else if (soUdt === 'int8' || soType.includes('bigint')) {
+    if (custIdCol && custIdCol.length) {
+      const cType = String(custIdCol[0].data_type || '').toLowerCase();
+      const cUdt = String(custIdCol[0].udt_name || '').toLowerCase();
+      if (cUdt === 'int8' || cType.includes('bigint')) {
         customerIdTargetType = 'BIGINT';
         customerIdCastType = 'bigint';
+      } else {
+        customerIdTargetType = 'INTEGER';
+        customerIdCastType = 'integer';
+      }
+    } else {
+      // Fallback to sales_orders if present
+      const soCustCol = await sql`
+        SELECT data_type, udt_name, character_maximum_length
+        FROM information_schema.columns
+        WHERE table_name = 'sales_orders' AND column_name = 'customer_id'
+        LIMIT 1
+      `;
+      if (soCustCol && soCustCol.length) {
+        const soType = String(soCustCol[0].data_type || '').toLowerCase();
+        const soUdt = String(soCustCol[0].udt_name || '').toLowerCase();
+        const soLen = soCustCol[0].character_maximum_length || 50;
+        customerIdTargetType = 'VARCHAR(' + soLen + ')';
+        customerIdCastType = 'text';
+        if (soType.includes('integer') || soUdt === 'int4') {
+          customerIdTargetType = 'INTEGER';
+          customerIdCastType = 'integer';
+        } else if (soUdt === 'int8' || soType.includes('bigint')) {
+          customerIdTargetType = 'BIGINT';
+          customerIdCastType = 'bigint';
+        }
       }
     }
     // Ensure column exists
@@ -467,6 +510,7 @@ const syncProcessedPlansIntoShipments = async () => {
           CURRENT_TIMESTAMP
         FROM production_planning pp
         WHERE pp.status = 'processed'
+          AND pp.order_id IS NOT NULL
           AND NOT EXISTS (
             SELECT 1 FROM order_shipments os WHERE os.order_id::text = pp.order_id::text
           )`;
@@ -489,6 +533,7 @@ const syncProcessedPlansIntoShipments = async () => {
           CURRENT_TIMESTAMP
         FROM production_planning pp
         WHERE pp.status = 'processed'
+          AND pp.order_id IS NOT NULL
           AND NOT EXISTS (
             SELECT 1 FROM order_shipments os WHERE os.order_id::text = pp.order_id::text
           )`;
@@ -1201,13 +1246,23 @@ const getOrderShipmentStats = async () => {
     const total = await sql`SELECT COUNT(*) as count FROM order_shipments`;
     const delivered = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'delivered'`;
     const shipped = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'shipped'`;
-    const processing = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'processing'`;
-
+    const processing = await sql`SELECT COUNT(*) as count FROM order_shipments WHERE status = 'processed'`;
+    const delayed = await sql`
+      SELECT COUNT(*) as count
+      FROM order_shipments
+      WHERE status = 'shipped'
+        AND (
+          (ship_date IS NOT NULL AND ship_date <= CURRENT_DATE - INTERVAL '1 day')
+          OR (ship_date IS NULL AND updated_at <= NOW() - INTERVAL '1 day')
+        )
+    `;
+ 
     return {
       totalOrders: parseInt(total[0].count),
       deliveredOrders: parseInt(delivered[0].count),
       shippedOrders: parseInt(shipped[0].count),
-      processingOrders: parseInt(processing[0].count)
+      processingOrders: parseInt(processing[0].count),
+      delayedShippedOrders: parseInt(delayed[0].count)
     };
   } catch (err) {
     console.error('Error fetching order shipment statistics:', err);
