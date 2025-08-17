@@ -764,10 +764,10 @@
           <button class="btn btn-outline-warning btn-sm" onclick="testCameraDisplay()" title="Test camera display">
             <i class="bi bi-camera"></i> Test Camera
           </button>
-          <button class="btn btn-outline-success btn-sm" onclick="generateTestBarcode()" title="Generate test barcode">
-            <i class="bi bi-upc-scan"></i> Test Barcode
+          <button class="btn btn-outline-success btn-sm" onclick="generateInventoryBarcode()" title="Generate barcode from inventory data">
+            <i class="bi bi-upc-scan"></i> Inventory Barcode
           </button>
-          <button class="btn btn-outline-info btn-sm" onclick="generateMultipleTestBarcodes()" title="Generate multiple test barcodes">
+          <button class="btn btn-outline-info btn-sm" onclick="generateMultipleInventoryBarcodes()" title="Generate multiple inventory barcodes">
             <i class="bi bi-collection"></i> Multiple
           </button>
           <button class="btn btn-outline-secondary btn-sm" onclick="simulateBarcodeScan()" title="Simulate barcode scan for testing">
@@ -1375,19 +1375,27 @@ async function testCameraDisplay() {
   }
 }
 
-function generateTestBarcode() {
-  console.log('🎯 Generating test barcode...');
+function generateInventoryBarcode() {
+  console.log('🎯 Generating inventory barcode...');
   
   try {
-    // Create a test barcode in the same format as Inventory.html
-    const testCode = 'TEST-001-123'; // Format: itemCode-id
+    // Check if we have inventory data
+    if (!inventoryData || inventoryData.length === 0) {
+      showMessage('No inventory data available. Please load inventory first.', 'warning');
+      return;
+    }
+    
+    // Get the first available inventory item
+    const item = inventoryData[0];
+    const codeValue = `${item.itemCode}-${item.id}`; // Same format as Inventory.html
+    
     const canvas = document.getElementById('testBarcodeCanvas');
     const display = document.getElementById('testBarcodeDisplay');
     
     if (canvas && display) {
-      // Set canvas dimensions
+      // Set canvas dimensions to match Inventory.html
       canvas.width = 200;
-      canvas.height = 80;
+      canvas.height = 100;
       
       const ctx = canvas.getContext('2d');
       
@@ -1395,54 +1403,71 @@ function generateTestBarcode() {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Draw barcode bars (CODE128 style)
-      ctx.fillStyle = 'black';
-      const barWidth = 2;
-      let x = 10;
-      
-      // Generate bars based on the test code
-      for (let i = 0; i < testCode.length; i++) {
-        const charCode = testCode.charCodeAt(i);
-        // Create varying bar heights for visual effect
-        const barHeight = (charCode % 3 + 1) * 20 + 15;
-        const y = (canvas.height - barHeight) / 2;
-        
-        // Draw the main bar
-        ctx.fillRect(x, y, barWidth, barHeight);
-        x += barWidth + 1;
-        
-        // Add spacing between characters
-        if (i < testCode.length - 1) {
-          x += 2;
+      // Generate barcode using the same method as Inventory.html
+      try {
+        // Use JsBarcode if available (same as Inventory.html)
+        if (window.JsBarcode) {
+          // Temporarily set canvas dimensions for JsBarcode
+          const originalWidth = canvas.width;
+          const originalHeight = canvas.height;
+          
+          // Generate barcode using JsBarcode (same as Inventory.html)
+          JsBarcode(canvas, codeValue, {
+            format: "CODE128",
+            width: 2,
+            height: 80,
+            displayValue: true,
+            fontSize: 14,
+            margin: 10
+          });
+          
+          // Restore original dimensions
+          canvas.width = originalWidth;
+          canvas.height = originalHeight;
+          
+        } else {
+          // Fallback to manual barcode generation
+          generateManualBarcode(canvas, codeValue);
         }
+        
+        // Show the barcode display
+        display.style.display = 'block';
+        
+        // Update display info
+        const infoDiv = display.querySelector('div:last-child');
+        if (infoDiv) {
+          infoDiv.innerHTML = `
+            <div style="font-size: 0.7rem; margin-top: 4px; color: #666;">
+              <strong>Product:</strong> ${item.productName}<br>
+              <strong>Code:</strong> ${codeValue}<br>
+              <strong>Quantity:</strong> ${item.totalQuantity}
+            </div>
+          `;
+        }
+        
+        console.log('✅ Inventory barcode generated:', codeValue);
+        showMessage(`Inventory barcode generated: ${codeValue}`, 'success');
+        
+        // Auto-hide after 30 seconds
+        setTimeout(() => {
+          display.style.display = 'none';
+          console.log('🕒 Inventory barcode display auto-hidden');
+        }, 30000);
+        
+      } catch (barcodeError) {
+        console.error('❌ Error generating barcode with JsBarcode:', barcodeError);
+        // Fallback to manual generation
+        generateManualBarcode(canvas, codeValue);
       }
       
-      // Add text below barcode
-      ctx.fillStyle = 'black';
-      ctx.font = '12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(testCode, canvas.width / 2, canvas.height - 5);
-      
-      // Show the test barcode display
-      display.style.display = 'block';
-      
-      console.log('✅ Test barcode generated:', testCode);
-      showMessage(`Test barcode generated: ${testCode}`, 'success');
-      
-      // Auto-hide after 30 seconds
-      setTimeout(() => {
-        display.style.display = 'none';
-        console.log('🕒 Test barcode display auto-hidden');
-      }, 30000);
-      
     } else {
-      console.error('❌ Test barcode canvas or display not found');
-      showMessage('Test barcode elements not found', 'error');
+      console.error('❌ Barcode canvas or display not found');
+      showMessage('Barcode elements not found', 'error');
     }
     
   } catch (error) {
-    console.error('❌ Error generating test barcode:', error);
-    showMessage(`Error generating test barcode: ${error.message}`, 'error');
+    console.error('❌ Error generating inventory barcode:', error);
+    showMessage(`Error generating inventory barcode: ${error.message}`, 'error');
   }
 }
 
