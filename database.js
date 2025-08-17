@@ -301,20 +301,65 @@ const testConnection = async () => {
     } catch (e) {
       console.warn('⚠️ Notifications schema standardization skipped:', e?.message);
     }
+    // Normalize/ensure notifications required columns (title, message, type, created_at)
+    try {
+      const cols2 = await connection`
+        SELECT LOWER(column_name) AS name
+        FROM information_schema.columns
+        WHERE table_name = 'notifications'
+      `;
+      const colNames = (cols2 || []).map(c => String(c.name));
+      // Ensure title exists or rename a likely legacy column
+      if (!colNames.includes('title')) {
+        if (colNames.includes('subject')) {
+          await connection('ALTER TABLE notifications RENAME COLUMN "subject" TO title');
+        } else if (colNames.includes('name')) {
+          await connection('ALTER TABLE notifications RENAME COLUMN "name" TO title');
+        } else if (colNames.includes('notification_title')) {
+          await connection('ALTER TABLE notifications RENAME COLUMN "notification_title" TO title');
+        } else {
+          await connection`ALTER TABLE notifications ADD COLUMN title VARCHAR(100) DEFAULT 'Notification'`;
+        }
+      }
+      // Ensure message exists or rename a likely legacy column
+      if (!colNames.includes('message')) {
+        if (colNames.includes('content')) {
+          await connection('ALTER TABLE notifications RENAME COLUMN "content" TO message');
+        } else if (colNames.includes('body')) {
+          await connection('ALTER TABLE notifications RENAME COLUMN "body" TO message');
+        } else if (colNames.includes('description')) {
+          await connection('ALTER TABLE notifications RENAME COLUMN "description" TO message');
+        } else if (colNames.includes('text')) {
+          await connection('ALTER TABLE notifications RENAME COLUMN "text" TO message');
+        } else {
+          await connection`ALTER TABLE notifications ADD COLUMN message TEXT DEFAULT ''`;
+        }
+      }
+      // Ensure type exists
+      if (!colNames.includes('type')) {
+        await connection`ALTER TABLE notifications ADD COLUMN type VARCHAR(20) DEFAULT 'info'`;
+      }
+      // Ensure created_at exists
+      if (!colNames.includes('created_at')) {
+        await connection`ALTER TABLE notifications ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`;
+      }
+    } catch (e) {
+      console.warn('⚠️ Notifications column normalization skipped:', e?.message);
+    }
     
     // Create scan history table if it doesn't exist
     await connection`
       CREATE TABLE IF NOT EXISTS scan_history (
         id SERIAL PRIMARY KEY,
-        scanned_code VARCHAR(100) NOT NULL,
-        scan_type VARCHAR(20) DEFAULT 'barcode',
+        scanned_code VARCHAR(255) NOT NULL,
+        scan_type VARCHAR(50) DEFAULT 'barcode',
         item_id INTEGER,
         product_name VARCHAR(255),
         quantity INTEGER DEFAULT 1,
-        scan_status VARCHAR(20) DEFAULT 'found',
-        scanned_by VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        notes TEXT
+        scan_status VARCHAR(50) DEFAULT 'success',
+        scanned_by VARCHAR(100),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
     
@@ -534,13 +579,31 @@ const getNotifications = async (limit = 10) => {
       return inMemoryNotifications.slice(0, limit);
     }
     
-    const result = await sql`
-      SELECT id, title, message, type, created_at, is_read 
-      FROM notifications 
-      ORDER BY created_at DESC 
-      LIMIT ${limit}
-    `;
-    return result;
+    try {
+      const result = await sql`
+        SELECT id, title, message, type, created_at, is_read 
+        FROM notifications 
+        ORDER BY created_at DESC 
+        LIMIT ${limit}
+      `;
+      return result;
+    } catch (selectErr) {
+      console.warn('⚠️ Falling back to SELECT * for notifications due to column mismatch:', selectErr?.message);
+      const anyCols = await sql`
+        SELECT * FROM notifications 
+        ORDER BY COALESCE(created_at, CURRENT_TIMESTAMP) DESC 
+        LIMIT ${limit}
+      `;
+      // Map to expected shape with best-effort field names
+      return anyCols.map(row => ({
+        id: row.id,
+        title: row.title || row.subject || row.name || 'Notification',
+        message: row.message || row.content || row.body || row.description || row.text || '',
+        type: row.type || 'info',
+        created_at: row.created_at || row.createdAt || new Date().toISOString(),
+        is_read: typeof row.is_read === 'boolean' ? row.is_read : (typeof row.read === 'boolean' ? row.read : false)
+      }));
+    }
   } catch (err) {
     console.error('Get notifications error:', err);
     // Fallback to in-memory storage
