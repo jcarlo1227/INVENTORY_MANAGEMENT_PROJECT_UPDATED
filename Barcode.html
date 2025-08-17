@@ -2777,8 +2777,11 @@ async function createVideoStream(videoConstraints, video, testStream) {
     })));
 
     // Wait for video to be ready before starting decoder
-    video.addEventListener('canplay', function videoCanPlayListener() {
-      video.removeEventListener('canplay', videoCanPlayListener);
+    let videoReady = false;
+    
+    function onVideoReady() {
+      if (videoReady) return;
+      videoReady = true;
       
       console.log('📹 Video is ready, starting decoder...');
       console.log('Video state:', {
@@ -2790,22 +2793,45 @@ async function createVideoStream(videoConstraints, video, testStream) {
         videoHeight: video.videoHeight
       });
       
+      // Clear the timeout
+      if (videoReadyTimeout) {
+        clearTimeout(videoReadyTimeout);
+      }
+      
       // Start the decoder
       startBarcodeDecoder(video);
-    }, { once: true });
-
+    }
+    
+    // Listen for multiple video events to ensure we catch when it's ready
+    video.addEventListener('canplay', onVideoReady, { once: true });
+    video.addEventListener('loadeddata', onVideoReady, { once: true });
+    video.addEventListener('canplaythrough', onVideoReady, { once: true });
+    
     // Set a timeout for video readiness
     const videoReadyTimeout = setTimeout(() => {
-      if (!video.readyState || video.readyState < 2) {
+      if (!videoReady) {
         console.warn('⚠️ Video not ready after timeout, attempting fallback...');
         
         // Try to start decoder anyway
         if (isCameraActive && isScanning) {
           console.log('🔄 Attempting to start decoder despite video timeout...');
-          startBarcodeDecoder(video);
+          
+          // Force video to play and then start decoder
+          try {
+            video.play().then(() => {
+              console.log('🎬 Video play successful, starting decoder...');
+              startBarcodeDecoder(video);
+            }).catch(playError => {
+              console.warn('⚠️ Video play failed, starting decoder anyway:', playError);
+              startBarcodeDecoder(video);
+            });
+          } catch (playError) {
+            console.warn('⚠️ Video play error, starting decoder anyway:', playError);
+            startBarcodeDecoder(video);
+          }
         }
       }
-    }, 5000);
+    }, 3000); // Reduced timeout to 3 seconds
 
     // Handle video errors
     video.addEventListener('error', function videoErrorListener(e) {
